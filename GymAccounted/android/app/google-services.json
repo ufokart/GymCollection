@@ -1,0 +1,70 @@
+{
+  "project_info": {
+    "project_number": "1093148006415",
+    "project_id": "gym-collection",
+    "storage_bucket": "gym-collection.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1093148006415:android:2785386d1b8295c855eb7a",
+        "android_client_info": {
+          "package_name": "com.gymCollection"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1093148006415-57g1tfpv9lrsm9ef5qfk6potjunvtb6b.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gymCollection",
+            "certificate_hash": "7fd2be328c09f9cee6e7239d93def470b0f6875d"
+          }
+        },
+        {
+          "client_id": "1093148006415-ntuo19tip20p1d242v1e78vhdltbskce.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gymCollection",
+            "certificate_hash": "4b0b4822b28350c03d89b184e6fa84c99af28ac7"
+          }
+        },
+        {
+          "client_id": "1093148006415-vl2uqion8l65usp3ekpv1orh019kms0s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gymCollection",
+            "certificate_hash": "4f313565401d16332139a3fb1f54aeec30a7c87a"
+          }
+        },
+        {
+          "client_id": "1093148006415-i358t4snkb8ct3tfe1b21i1gsvae6pef.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVJXuSbZ5I_CBl2uZ_Qnqn5PPl-Fe_l6I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1093148006415-i358t4snkb8ct3tfe1b21i1gsvae6pef.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1093148006415-k1ta5okgekg9dpjjm2s17tm4sq9r5gjv.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.gymCollection"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
