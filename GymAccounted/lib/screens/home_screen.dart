@@ -50,7 +50,10 @@ class _HomeScreenState extends State<HomeScreen> {
       _fetchSubscription();
     });
   }
-
+  Future<bool> _onWillPop() async {
+    // Show a dialog or perform any other action when the back button is pressed
+    return false; // Returning false prevents the navigation
+  }
   @override
   void initState() {
     super.initState();
@@ -156,7 +159,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+        onWillPop: _onWillPop,
+        child: Scaffold(
       appBar: AppBar(
         title: Text(
           _pageTitle[_selectedIndex],
@@ -335,6 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedLabelStyle: TextStyle(color: Colors.grey),
         onTap: _onItemTapped,
       ),
+    ),
     );
   }
 }

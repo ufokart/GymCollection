@@ -51,84 +51,102 @@ class _OtpScreenState extends State<OtpScreen> {
     });
   }
 
-  void _resendOtp() {
+  void _resendOtp() async {
     setState(() {
       _secondsRemaining = 60;
       _enableResend = false;
     });
     _startTimer();
-    _verifyPhoneNumber();
+    await _verifyPhoneNumber();
   }
 
   Future<void> _verifyPhoneNumber() async {
-    await _auth.verifyPhoneNumber(
-      phoneNumber: widget.phoneNumber,
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        await _auth.signInWithCredential(credential);
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Verification failed. Please try again.')),
-        );
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        setState(() {
-          _verificationId = verificationId;
-        });
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {
-        setState(() {
-          _verificationId = verificationId;
-        });
-      },
-    );
+    try {
+      await _auth.verifyPhoneNumber(
+        phoneNumber: widget.phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          await _signInWithCredential(credential);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Verification failed: ${e.message}')),
+          );
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          setState(() {
+            _verificationId = verificationId;
+          });
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          setState(() {
+            _verificationId = verificationId;
+          });
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error in sending OTP: $e')),
+      );
+    }
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _verifyOtp() async {
-    setState(() {
-      _isLoading = true;
-    });
-    String otp = _otpController.text;
-    PhoneAuthCredential credential = PhoneAuthProvider.credential(
-      verificationId: _verificationId,
-      smsCode: otp,
-    );
-
+  Future<void> _signInWithCredential(PhoneAuthCredential credential) async {
     try {
       await _auth.signInWithCredential(credential);
       final user = _auth.currentUser;
       if (user != null) {
-        // Get the user ID
-        // Get user details
-        String userId = user.uid;
-        String userName = user.displayName ?? "";
-        String userEmail = user.email ?? "";
-        // Create a User object
-        gymUser.User data = gymUser.User(id: userId, name: userName, email: userEmail, membersLimit: 0, plansLimit: 0,razorPayKey: '');
-        // Save user details to shared preferences
+        gymUser.User data = gymUser.User(
+          id: user.uid,
+          name: user.displayName ?? "",
+          email: user.email ?? "",
+          membersLimit: 0,
+          plansLimit: 0,
+          razorPayKey: '',
+        );
+
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('user', jsonEncode(data.toJson()));
-        // Handle successful sign-in here
-        // For example, navigate to a new page or show a success message
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Signed in successfully!'),
-        ));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Signed in successfully!')),
+        );
         _fetchGymData();
       } else {
-        // Handle the case where the user cancels the sign-in process
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Sign in canceled.'),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign in canceled.')),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invalid OTP. Please try again.')),
+        SnackBar(content: Text('Invalid OTP. Error: $e')),
+      );
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    if (_otpController.text.isEmpty || _otpController.text.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a valid 6-digit OTP.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      PhoneAuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId,
+        smsCode: _otpController.text,
+      );
+      await _signInWithCredential(credential);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to verify OTP. Error: $e')),
       );
       setState(() {
         _isLoading = false;
@@ -137,8 +155,8 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Future<void> _fetchGymData() async {
-    final response = await _gymService.getGym();
-    setState(() {
+    try {
+      final response = await _gymService.getGym();
       if (response == null) {
         Navigator.pushReplacement(
           context,
@@ -150,7 +168,18 @@ class _OtpScreenState extends State<OtpScreen> {
           MaterialPageRoute(builder: (context) => HomeScreen()),
         );
       }
-    });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch gym data. Error: $e')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _otpController.dispose();
+    super.dispose();
   }
 
   @override

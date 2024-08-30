@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'otp_screen.dart';
+import 'package:gymaccounted/Modal/UserModal.dart' as gymUser;
+import 'package:gymaccounted/screens/home_screen.dart';
+import 'package:gymaccounted/Networking/Apis.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:gymaccounted/screens/adduser-screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+import 'dart:convert';
 
 class PhoneAuthScreen extends StatefulWidget {
   @override
@@ -14,6 +22,13 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   bool _isPhoneNumberValid = false;
   bool _isLoading = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  late GymService _gymService;
+
+  @override
+  void initState() {
+    super.initState();
+    _gymService = GymService(Supabase.instance.client);
+  }
 
   void _validatePhoneNumber(String phoneNumber) {
     setState(() {
@@ -30,17 +45,14 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       phoneNumber: _phoneNumber,
       verificationCompleted: (PhoneAuthCredential credential) async {
         // Auto-retrieval or instant verification
-        await _auth.signInWithCredential(credential);
-        setState(() {
-          _isLoading = false;
-        });
+        await _signInWithCredential(credential);
       },
       verificationFailed: (FirebaseAuthException e) {
         setState(() {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Verification failed. Please try again.')),
+          SnackBar(content: Text('Verification failed. Error: ${e.message}')),
         );
       },
       codeSent: (String verificationId, int? resendToken) {
@@ -50,7 +62,10 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => OtpScreen(phoneNumber: _phoneNumber, verificationId: verificationId),
+            builder: (context) => OtpScreen(
+              phoneNumber: _phoneNumber,
+              verificationId: verificationId,
+            ),
           ),
         );
       },
@@ -60,6 +75,68 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
         });
       },
     );
+  }
+
+  Future<void> _signInWithCredential(PhoneAuthCredential credential) async {
+    try {
+      await _auth.signInWithCredential(credential);
+      final user = _auth.currentUser;
+
+      if (user != null) {
+        // Get user details and save them
+        gymUser.User data = gymUser.User(
+          id: user.uid,
+          name: user.displayName ?? "",
+          email: user.email ?? "",
+          membersLimit: 0,
+          plansLimit: 0,
+          razorPayKey: '',
+        );
+
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user', jsonEncode(data.toJson()));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Signed in successfully!')),
+        );
+        _fetchGymData();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign in canceled.')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Invalid OTP. Error: $e')),
+      );
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchGymData() async {
+    try {
+      final response = await _gymService.getGym();
+      if (response == null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => AddUserScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch gym data. Error: $e')),
+      );
+    }
   }
 
   @override
@@ -101,7 +178,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                     borderSide: BorderSide(color: Colors.indigo),
                   ),
                 ),
-                initialCountryCode: 'IN', // default country code set to India
+                initialCountryCode: 'IN',
                 onChanged: (phone) {
                   setState(() {
                     _phoneNumber = phone.completeNumber;
