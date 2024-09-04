@@ -18,7 +18,7 @@ class TransactionService {
           .from('Transaction')
           .select()
           .eq('gym_id', gymId)
-          .order('date', ascending: false);
+          .order('created_at', ascending: true);
       final data = response as List<dynamic>;
       return data.map((json) => Transaction.fromJson(json)).toList();
     } catch (e) {

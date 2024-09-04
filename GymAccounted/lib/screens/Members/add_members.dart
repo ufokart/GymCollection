@@ -34,6 +34,8 @@ class _AddMembersState extends State<AddMembers> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _discountAmountController = TextEditingController();
+
   final ImagePicker _picker = ImagePicker();
   String _selectedGender = '';
   String _selectedBatch = '';
@@ -64,6 +66,7 @@ class _AddMembersState extends State<AddMembers> {
       _emailController.text = member.email;
       _addressController.text = member.address ?? '';
       _phoneController.text = member.phoneNo ?? '';
+      _discountAmountController.text = member.discountedAmount ?? '';
       _selectedGender = member.gender ?? '';
       _selectedBatch = member.batch ?? '';
       _selectedPaymentType = member.amountType ?? '';
@@ -438,6 +441,7 @@ class _AddMembersState extends State<AddMembers> {
         status: 1,
         renew: false,
         expiredDate: expiredDate,
+        discountedAmount: _discountAmountController.text
       );
 
       if (insertResponse['success'] == false) {
@@ -461,7 +465,7 @@ class _AddMembersState extends State<AddMembers> {
         ),
       );
 
-      final planAmount = selectedPlan.planPrice;
+      final planAmount = _discountAmountController.text.isEmpty ? selectedPlan.planPrice : _discountAmountController.text;
 
       final transactionResponse = await _transactionService.insertTransaction(
         gymId: insertedMember.gymId,
@@ -817,7 +821,17 @@ class _AddMembersState extends State<AddMembers> {
                         ),
                       ],
                     ),
+                    SizedBox(height: 20),
+                    TextFormField(
+                      controller: _discountAmountController,
+                      decoration: InputDecoration(
+                        labelText: 'Discount Amount',
+                        prefixIcon: Icon(Icons.price_check),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
                     SizedBox(height: 10),
+
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

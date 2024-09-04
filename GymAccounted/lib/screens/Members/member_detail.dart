@@ -12,7 +12,7 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:gymaccounted/Networking/subscription_api.dart';
-
+import 'package:gymaccounted/screens/Members/member_renewable.dart';
 class MemberDetailScreen extends StatefulWidget {
   final Member member; // Member instance passed to the screen
 
@@ -36,69 +36,16 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
 
 
   void _renewMembership() {
-    // Show confirmation alert dialog
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Confirm Renewal'),
-          content: Text('Are you sure you want to renew the membership for ${widget.member.name}?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Dismiss the dialog
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                try {
-                  final response = await _membershipService.renewMembership(
-                      memberId: widget.member.id.toString());
-                  if (response['success'] == false) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Membership renewal failed for ${widget.member.name}!')),
-                    );
-                    return;
-                  } else {
-                    final transactionResponse = await _transactionService.insertTransaction(
-                      gymId: widget.member.gymId,
-                      planId: widget.member.planId,
-                      amount: _planPrice,
-                      amountType: widget.member.amountType,
-                      memberId: widget.member.id,
-                      date: widget.member.joiningDate,
-                      planName: _planName,
-                      planLimit: _planLimit,
-                      memberName: widget.member.name,
-                      memberPhone: widget.member.phoneNo,
-                    );
-                    if (transactionResponse['success'] == false) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error inserting transaction: ${transactionResponse['message']}')),
-                      );
-                      return;
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Membership renewed for ${widget.member.name}!')),
-                      );
-                    }
-                  }
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('An error occurred: $e')),
-                  );
-                } finally {
-                  Navigator.of(context).pop(); // Close the dialog
-                  Navigator.of(context).pop(); // Pop member detail screen
-                }
-              },
-              child: Text('Renew'),
-            ),
-          ],
-        );
-      },
-    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MemberRenewable(member:widget.member),
+      ),
+    ).then((_) {
+      setState(() {
+        Navigator.of(context).pop();
+      });
+    });
   }
 
 
@@ -160,7 +107,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
         );
         _planLimit = selectedPlan.planLimit.toString();
         _planName = selectedPlan.planName;
-        _planPrice = selectedPlan.planPrice;
+        _planPrice = widget.member.discountedAmount == '0' || widget.member.discountedAmount.isEmpty  ?  selectedPlan.planPrice : widget.member.discountedAmount;
       });
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -168,7 +115,25 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
       );
     }
   }
-
+  void _showFullImageDialog(File image) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).pop(), // Close the dialog on tap
+            child: Container(
+              padding: const EdgeInsets.all(10.0),
+              child: Image.file(
+                image,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final member = widget.member; // Use the passed member
@@ -190,6 +155,13 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
           children: [
             // Member Image
             Center(
+        child: GestureDetector(
+        onTap: () {
+      if (_image != null) {
+      _showFullImageDialog(_image!);
+      }
+      },
+
               child: ClipOval(
                 child: _image == null
                     ? Icon(
@@ -203,7 +175,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                   height: 100,
                   fit: BoxFit.cover,
                 ),
-              ),
+              ),),
             ),
             SizedBox(height: 16),
             // Member Details Section

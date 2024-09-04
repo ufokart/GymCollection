@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:supabase/supabase.dart';
 import 'package:gymaccounted/Modal/membership_plan_dm.dart';
 import 'package:gymaccounted/Modal/UserModal.dart' as gymUser;
+import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MembershipService {
   final SupabaseClient supabaseClient;
@@ -70,6 +74,7 @@ class MembershipService {
     required int status,
     required bool renew,
     required String expiredDate,
+    required String discountedAmount
   }) async {
     try {
       final response = await supabaseClient.from('Memberships').insert({
@@ -79,7 +84,8 @@ class MembershipService {
         'joining_date': joiningDate,
         'status': status,
         'renew_plan': renew,
-        'expired_date': expiredDate
+        'expired_date': expiredDate,
+        'discounted_amount':discountedAmount
       }).select();
       // Debug print to inspect the response
       print('Response: $response');
@@ -117,14 +123,99 @@ class MembershipService {
     }
   }
 
+
+// Function to parse and compare dates
+  DateTime parseDateString(String dateStr) {
+    final dateFormat = DateFormat('dd-MMMM-yyyy'); // Adjust if needed
+    return dateFormat.parse(dateStr);
+  }
+
+  Future<void> updateDueMemberships() async {
+    final supabase = Supabase.instance.client;
+    final user = await gymUser.User.getUser();
+    final gymId = user?.id ?? "";
+
+    try {
+      // Fetch records where gym_id matches
+      final response = await supabase
+          .from('Memberships')
+          .select('*')
+          .eq('gym_id', gymId)
+          .select();
+
+      if (response == null) {
+        print('Error fetching records');
+        return;
+      }
+
+      final records = response as List<dynamic>;
+      // Get the current date
+      final now = DateTime.now();
+      // Filter records in Dart and update renew_plan
+      final renewPlanUpdates = records.where((record) {
+        final joiningDateStr = record['joining_date'] as String;
+        final joiningDate = DateTime.parse(joiningDateStr);
+        return joiningDate.isBefore(now);
+      }).map((record) => record['id']).toList();
+
+      if (renewPlanUpdates.isNotEmpty) {
+        final updateRenewPlanResponse = await supabase
+            .from('Memberships')
+            .update({'renew_plan': false})
+            .eq('gym_id', gymId)
+            .filter('id', 'in', renewPlanUpdates)
+            .select();
+
+        if (updateRenewPlanResponse == null) {
+          print('Error updating renew_plan:');
+        } else {
+          print('Successfully updated renew_plan.');
+        }
+      }
+
+      // Filter records and update status
+      final statusUpdateIds = records.where((record) {
+        final expiredDateStr = record['expired_date'] as String;
+        final expiredDate = parseDateString(expiredDateStr);
+        return expiredDate.isBefore(now);
+      }).map((record) => record['id']).toList();
+
+      if (statusUpdateIds.isNotEmpty) {
+        final updateStatusResponse = await supabase
+            .from('Memberships')
+            .update({'status': 0})
+            .eq('gym_id', gymId)
+            .filter('id', 'in', statusUpdateIds)
+            .select();
+
+        if (updateStatusResponse == null) {
+          print('Error updating status:');
+        } else {
+          print('Successfully updated status.');
+        }
+      }
+    } catch (e) {
+      print('Unexpected error: $e');
+    }
+  }
+
+
   Future<Map<String, dynamic>> renewMembership({
     required String memberId,
+    required String joiningDate,
+    required String expiredDate,
+    required String planId,
+    required String discountedAmount,
   }) async {
     try {
       final user = await gymUser.User.getUser();
       final gymId = user?.id ?? "";
 
       final response = await supabaseClient.from('Memberships').update({
+        'plan_id': planId,
+        'joining_date': joiningDate,
+        'expired_date': expiredDate,
+        'discounted_amount':discountedAmount,
         'renew_plan': 1,
         'status': 1,
       }).eq('member_id', memberId).eq('gym_id', gymId).select();

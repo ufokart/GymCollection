@@ -143,7 +143,7 @@ class GymService {
     DateTime endOfYear = DateTime(today.year, 12, 31, 23, 59, 59);
 
     for (var transaction in transactions) {
-      DateTime transactionDate = DateTime.parse(transaction.date);
+      DateTime transactionDate = transaction.createdAt;//DateTime.parse(transaction.date);
       transactionDate = DateTime(transactionDate.year, transactionDate.month, transactionDate.day);
       int amount = transaction.amount;
       String amountType = transaction.amountType;

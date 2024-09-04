@@ -48,7 +48,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     if (filter == 'Today') {
       final today = DateTime.now();
       tempFilteredTransactions = transactions.where((transaction) {
-        final transactionDate = DateTime.parse(transaction.date);
+        final transactionDate = transaction.createdAt;//DateTime.parse(transaction.date);
         return transactionDate.year == today.year &&
             transactionDate.month == today.month &&
             transactionDate.day == today.day;
@@ -56,7 +56,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     } else if (filter == 'This Month') {
       final now = DateTime.now();
       tempFilteredTransactions = transactions.where((transaction) {
-        final transactionDate = DateTime.parse(transaction.date);
+        final transactionDate = transaction.createdAt;//DateTime.parse(transaction.date);
         return transactionDate.year == now.year &&
             transactionDate.month == now.month;
       }).toList();

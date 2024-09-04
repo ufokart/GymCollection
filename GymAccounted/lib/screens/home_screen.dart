@@ -14,6 +14,7 @@ import 'package:gymaccounted/screens/subscription.dart';
 import 'package:gymaccounted/Modal/UserModal.dart' as gymUser;
 import 'package:gymaccounted/screens/Alerts/premium_popup.dart';
 import 'package:gymaccounted/Networking/subscription_api.dart';
+import 'package:gymaccounted/Networking/membership_api.dart';
 import 'package:gymaccounted/Modal/purchased_plans_dm.dart';
 class HomeScreen extends StatefulWidget {
   @override
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late gymUser.User user;
   bool userInitialized = false; //
   late SubscriptionApi _subscriptionApi;
+  late MembershipService _membershipService;
   PurchasedPlansDm? activePlan;
 
   bool _subscription = false;
@@ -47,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      _updateDueMembers();
       _fetchSubscription();
     });
   }
@@ -59,9 +62,11 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _gymService = GymService(Supabase.instance.client);
     _subscriptionApi = SubscriptionApi(Supabase.instance.client);
+    _membershipService = MembershipService(Supabase.instance.client);
     gymFuture = _gymService.getGym(); // Fetch initial gym data
     _initializeUser();
     _fetchSubscription();
+    _updateDueMembers();
 
   }
   Future<void> _initializeUser() async {
@@ -98,6 +103,17 @@ class _HomeScreenState extends State<HomeScreen> {
     //  ScaffoldMessenger.of(context).showSnackBar(
        // SnackBar(content: Text('Error fetching plans: $error')),
      // );
+    }
+  }
+  Future<void> _updateDueMembers() async {
+    try {
+       await _membershipService.updateDueMemberships();
+      setState(() {
+      });
+    } catch (error) {
+      //  ScaffoldMessenger.of(context).showSnackBar(
+      // SnackBar(content: Text('Error fetching plans: $error')),
+      // );
     }
   }
   @override
