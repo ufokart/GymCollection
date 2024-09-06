@@ -34,10 +34,12 @@ class DashboardMembersCounts {
   final int totalCount;
   final int activeCount;
   final int inactiveCount;
+  final int newCount;
 
   DashboardMembersCounts({
     required this.totalCount,
     required this.activeCount,
     required this.inactiveCount,
+    required this.newCount,
   });
 }

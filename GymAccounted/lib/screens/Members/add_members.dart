@@ -66,7 +66,7 @@ class _AddMembersState extends State<AddMembers> {
       _emailController.text = member.email;
       _addressController.text = member.address ?? '';
       _phoneController.text = member.phoneNo ?? '';
-      _discountAmountController.text = member.discountedAmount ?? '';
+      _discountAmountController.text = member.discountedAmount ?? '0';
       _selectedGender = member.gender ?? '';
       _selectedBatch = member.batch ?? '';
       _selectedPaymentType = member.amountType ?? '';
@@ -395,6 +395,7 @@ class _AddMembersState extends State<AddMembers> {
         planId: insertedMember.planId,
         expiredDate: expiredDate,
         memberId: insertedMember.id.toString(),
+          discountedAmount: _discountAmountController.text
       );
 
       if (membershipResponse['success'] == false) {
@@ -406,7 +407,8 @@ class _AddMembersState extends State<AddMembers> {
         return; // Early exit if update fails
       }
       // Update Transaction
-      final planAmount = selectedPlan.planPrice;
+      //final planAmount = selectedPlan.planPrice;
+      final planAmount = _discountAmountController.text.isEmpty ? selectedPlan.planPrice : _discountAmountController.text;
 
       final transactionResponse = await _transactionService.updateTransaction(
           planId: insertedMember.planId,
@@ -417,7 +419,8 @@ class _AddMembersState extends State<AddMembers> {
           planName: selectedPlan.planName,
           planLimit: selectedPlan.planLimit.toString(),
           memberName: insertedMember.name,
-          memberPhone: insertedMember.phoneNo);
+          memberPhone: insertedMember.phoneNo,
+          tnxId: widget.member?.trxId ?? '0');
 
       if (transactionResponse['success'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -488,7 +491,18 @@ class _AddMembersState extends State<AddMembers> {
         );
         return; // Early exit if insertion fails
       }
-
+      final updateMembershipTnxIdResponse = await _membershipService.updateMembershipTnxId(
+        tnxId:  transactionResponse['data'][0]['id'],
+        memberId:  insertedMember.id,
+      );
+      if (updateMembershipTnxIdResponse['success'] == false) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  'Error inserting transaction: ${transactionResponse['message']}')),
+        );
+        return; // Early exit if insertion fails
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Member saved successfully.')),
       );

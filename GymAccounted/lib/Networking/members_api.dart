@@ -15,7 +15,7 @@ class MemberService {
     final response = await supabaseClient
         .from('Members')
         .select(
-        '*, Memberships(status, renew_plan, expired_date, discounted_amount), Plans(plan_limit), Transaction(amount_type)')
+        '*, Memberships(status, renew_plan, expired_date, discounted_amount, TnxId), Plans(plan_limit), Transaction(amount_type)')
         .eq('gym_id', gymId)
         .order('created_at', ascending: false);
       final data = response as List<dynamic>;
@@ -29,6 +29,7 @@ class MemberService {
         'renew': membershipJson['renew_plan'],
         'expiredAt': membershipJson['expired_date'],
         'discountedAmount': membershipJson['discounted_amount'],
+        'trxId': membershipJson['TnxId'],
         'amount_type': amountType,
       });
     }).toList();

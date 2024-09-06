@@ -8,7 +8,8 @@ import 'dart:convert';
 import 'package:gymaccounted/Modal/UserModal.dart' as gymUser;
 import 'package:gymaccounted/Networking/subscription_api.dart';
 class Members extends StatefulWidget {
-  const Members({Key? key}) : super(key: key);
+  final String memberType; // Member instance passed to the screen
+  const Members({Key? key, required this.memberType}) : super(key: key);
 
   @override
   _MembersState createState() => _MembersState();
@@ -19,7 +20,7 @@ class _MembersState extends State<Members> {
   late Future<List<Member>> members;
   String _searchQuery = '';
   String _filterStatus = 'all';
-  bool _showFilters = false;
+  bool _showFilters = true;
   late gymUser.User user;
   bool userInitialized = false; // Tra
   late SubscriptionApi _subscriptionApi;
@@ -27,6 +28,7 @@ class _MembersState extends State<Members> {
   @override
   void initState() {
     super.initState();
+    _filterStatus = widget.memberType;
     memberService = MemberService(Supabase.instance.client);
     members = memberService.getMembers();
     _subscriptionApi = SubscriptionApi(Supabase.instance.client);
@@ -283,7 +285,7 @@ class _MembersState extends State<Members> {
                             (_filterStatus == 'active' && member.status == 1) ||
                             (_filterStatus == 'due' && member.status == 0) ||
                             (_filterStatus == 'renewed' &&
-                                member.renew == true)))
+                                member.status == 2)))
                     .toList();
                 if (filteredMembers.isEmpty) {
                   return Center(child: Text('No members found'));
@@ -313,15 +315,15 @@ class _MembersState extends State<Members> {
                             padding: EdgeInsets.symmetric(
                                 vertical: 2, horizontal: 8),
                             decoration: BoxDecoration(
-                              color: member.renew
-                                  ? Colors.green
+                              color: member.status == 2
+                                  ? Colors.deepPurple
                                   : member.status == 1
                                       ? Colors.green
                                       : Colors.red,
                               borderRadius: BorderRadius.circular(5),
                             ),
                             child: Text(
-                              member.renew
+                              member.status == 2
                                   ? "Renewed"
                                   : member.status == 1
                                       ? "Active"

@@ -10,9 +10,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:gymaccounted/Modal/dahboard_dm.dart';
 import 'package:gymaccounted/Modal/tranaction_dm.dart';
 import 'package:gymaccounted/Networking/users_apis.dart';
-class Dashboard extends StatefulWidget {
-  const Dashboard({Key? key}) : super(key: key);
+import 'package:gymaccounted/screens/Members/members.dart';
 
+class Dashboard extends StatefulWidget {
+  final void Function(String cardType) onNavigateToMembers; // Update callback to accept a parameter
+  final void Function(String cardType) onNavigateToToday; // Update callback to accept a parameter
+  const Dashboard({
+    Key? key,
+    required this.onNavigateToMembers,
+    required this.onNavigateToToday// Pass the callback here
+  }) : super(key: key);
   @override
   DashboardState createState() => DashboardState(); // Corrected state class instantiation
 }
@@ -54,6 +61,20 @@ class DashboardState extends State<Dashboard> {
     }
   }
 
+  // Define the function that handles navigation to "MEMBERS"
+  void _navigateToMembers(String value) {
+    if (widget.onNavigateToMembers != null) {
+      widget.onNavigateToMembers!(value); // Trigger the callback to HomeScreen
+    }
+  }
+
+  // Define the function that handles navigation to "MEMBERS"
+  void _onNavigateToToday(String value) {
+    if (widget.onNavigateToToday != null) {
+      widget.onNavigateToToday!(value); // Trigger the callback to HomeScreen
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,7 +95,10 @@ class DashboardState extends State<Dashboard> {
             return SingleChildScrollView(
               child: Column(
                 children: [
-                  DashboardHeader(amounts: amounts),
+                  DashboardHeader( onCardTap: (cardType) {
+                    _onNavigateToToday(cardType); // Example: Display the type of card tapped
+                    // You can perform actions based on cardType, e.g., navigate to a detailed view
+                  },amounts: amounts),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                     child: Align(
@@ -89,8 +113,18 @@ class DashboardState extends State<Dashboard> {
                     ),
                   ),
                   DashboardTodayData(dashboardMembershipSummary: membershipSummary),
-                  DashboardCollection(amounts: amounts),
-                  DashboardMembers(dashboardMembersCounts: membersCount),
+                  DashboardCollection(onCardTap: (cardType) {
+                    _onNavigateToToday(cardType); // Example: Display the type of card tapped
+                    // You can perform actions based on cardType, e.g., navigate to a detailed view
+                  },amounts: amounts),
+                  // Pass the _navigateToMembers function to onCardTap
+                  DashboardMembers(
+                    dashboardMembersCounts: membersCount,
+                    onCardTap: (cardType) {
+                      _navigateToMembers(cardType); // Example: Display the type of card tapped
+                      // You can perform actions based on cardType, e.g., navigate to a detailed view
+                    }
+                  ),
                 ],
               ),
             );

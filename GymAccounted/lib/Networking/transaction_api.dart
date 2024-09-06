@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -73,6 +74,7 @@ class TransactionService {
     required String planLimit,
     required String memberName,
     required String memberPhone,
+    required String tnxId
   }) async {
     try {
       final response = await _client
@@ -88,6 +90,7 @@ class TransactionService {
             'member_phone_no': memberPhone
           })
           .eq('member_id', memberId)
+          .eq('id', int.parse(tnxId))
           .select();
       if (response != null) {
         return {'success': true, 'message': 'Membership updated successfully.'};

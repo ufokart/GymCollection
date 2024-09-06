@@ -17,6 +17,7 @@ import 'package:gymaccounted/Networking/subscription_api.dart';
 import 'package:gymaccounted/Networking/membership_api.dart';
 import 'package:gymaccounted/Modal/purchased_plans_dm.dart';
 class HomeScreen extends StatefulWidget {
+
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
@@ -24,12 +25,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   late GymService _gymService;
+  String _memberType = 'all';
+  String _transactionType = 'all';
   Future<Gym?>? gymFuture;
   late gymUser.User user;
   bool userInitialized = false; //
   late SubscriptionApi _subscriptionApi;
   late MembershipService _membershipService;
   PurchasedPlansDm? activePlan;
+  late List<Widget> _widgetOptions;
 
   bool _subscription = false;
   static const List<String> _pageTitle = <String>[
@@ -39,12 +43,27 @@ class _HomeScreenState extends State<HomeScreen> {
     "TRANSACTIONS",
   ];
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    Dashboard(),
-    Members(),
-    Plans(),
-    TransactionScreen(),
-  ];
+  void _onNavigateToMembers() {
+    setState(() {
+      // Update the index or any other logic you have for navigation
+      _widgetOptions = _buildWidgetOptions(); // Rebuild options on navigation
+      _selectedIndex = 1; // Set the index to the "Members" tab
+    });
+  }
+
+  void _onNavigateToToday() {
+    setState(() {
+      // Update the index or any other logic you have for navigation
+      _widgetOptions = _buildWidgetOptions(); // Rebuild options on navigation
+      _selectedIndex = 3; // Set the index to the "Members" tab
+    });
+  }
+  // static const List<Widget> _widgetOptions = <Widget>[
+  //   Dashboard(onNavigateToMembers: _onNavigateToMembers),
+  //   Members(),
+  //   Plans(),
+  //   TransactionScreen(),
+  // ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -53,6 +72,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _fetchSubscription();
     });
   }
+
+
+
   Future<bool> _onWillPop() async {
     // Show a dialog or perform any other action when the back button is pressed
     return false; // Returning false prevents the navigation
@@ -67,7 +89,25 @@ class _HomeScreenState extends State<HomeScreen> {
     _initializeUser();
     _fetchSubscription();
     _updateDueMembers();
-
+    _widgetOptions = _buildWidgetOptions(); // Initialize options with a method
+  }
+  List<Widget> _buildWidgetOptions() {
+    return [
+      Dashboard(onNavigateToMembers: (cardType) {
+        setState(() {
+          _memberType = cardType; // Update member type when navigating
+          _onNavigateToMembers(); // Rebuild the widget list
+        });
+      },onNavigateToToday: (cardType) {
+    setState(() {
+      _transactionType = cardType;
+      _onNavigateToToday(); // Rebuild the widget list
+    });
+    }),
+      Members(memberType: _memberType), // This now always gets the updated type
+      Plans(),
+      TransactionScreen(transactionType: _transactionType),
+    ];
   }
   Future<void> _initializeUser() async {
     user = (await gymUser.User.getUser()) ?? gymUser.User(id: '', name: '', email: '', membersLimit: 0, plansLimit: 0, razorPayKey: '');

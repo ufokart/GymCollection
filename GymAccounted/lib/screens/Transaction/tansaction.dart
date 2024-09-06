@@ -6,8 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:gymaccounted/screens/Transaction/transaction_detail.dart';
 
 class TransactionScreen extends StatefulWidget {
-  const TransactionScreen({Key? key}) : super(key: key);
-
+  final String transactionType; // Member instance passed to the screen
+  const TransactionScreen({Key? key, required this.transactionType}) : super(key: key);
   @override
   _TransactionScreenState createState() => _TransactionScreenState();
 }
@@ -24,6 +24,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   @override
   void initState() {
     super.initState();
+    filter = widget.transactionType;
     _transactionService = TransactionService(Supabase.instance.client);
     _fetchTransactions();
   }

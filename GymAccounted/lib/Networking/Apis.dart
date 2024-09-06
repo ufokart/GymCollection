@@ -222,10 +222,19 @@ class GymService {
         .count();
     final inactiveCount = inactiveCountResponse.count ?? 0;
 
+    final reNewCountResponse = await supabase
+        .from('Memberships')
+        .select()
+        .eq('gym_id', gymId)
+        .eq('status', 2)
+        .count();
+    final reNewCount = reNewCountResponse.count ?? 0;
+
     final counts = DashboardMembersCounts(
       totalCount: totalCount,
       activeCount: activeCount,
       inactiveCount: inactiveCount,
+        newCount: reNewCount
     );
 
     print(counts);

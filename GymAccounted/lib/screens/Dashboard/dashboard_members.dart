@@ -1,47 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:gymaccounted/Modal/dahboard_dm.dart';
 
+import 'package:flutter/material.dart';
+import 'package:gymaccounted/Modal/dahboard_dm.dart';
+
 class DashboardMembers extends StatelessWidget {
   final DashboardMembersCounts dashboardMembersCounts;
-  const DashboardMembers({super.key, required this.dashboardMembersCounts});
+  final void Function(String cardType) onCardTap; // Update callback to accept a parameter
+
+  const DashboardMembers({
+    Key? key,
+    required this.dashboardMembersCounts,
+    required this.onCardTap, // Pass the callback here
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16.0), // Padding around the section
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            "Members", // Header text
+            "Members",
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 12), // Space between header and cards
+          SizedBox(height: 12),
           Container(
-            height: 200, // Adjust the height as needed
+            height: 200,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: <Widget>[
-                HorizontalCards(
-                  title: dashboardMembersCounts.totalCount.toString(),
-                  subtitle: "Overall members",
-                  iconColor: Colors.blue,
-                  textColor: Colors.black,
+                InkWell(
+                  onTap: () => onCardTap('all'), // Pass the card type or relevant data
+                  child: HorizontalCards(
+                    title: dashboardMembersCounts.totalCount.toString(),
+                    subtitle: "Overall members",
+                    iconColor: Colors.blue,
+                    textColor: Colors.black,
+                  ),
                 ),
-                HorizontalCards(
-                  title: dashboardMembersCounts.activeCount.toString(),
-                  subtitle: "Active Members",
-                  iconColor: Colors.green,
-                  textColor: Colors.black,
+                InkWell(
+                  onTap: () => onCardTap('active'),
+                  child: HorizontalCards(
+                    title: dashboardMembersCounts.activeCount.toString(),
+                    subtitle: "Active Members",
+                    iconColor: Colors.green,
+                    textColor: Colors.black,
+                  ),
                 ),
-                HorizontalCards(
-                  title: dashboardMembersCounts.inactiveCount.toString(),
-                  subtitle: "Due Members",
-                  iconColor: Colors.red,
-                  textColor: Colors.black,
+                InkWell(
+                  onTap: () => onCardTap('due'),
+                  child: HorizontalCards(
+                    title: dashboardMembersCounts.inactiveCount.toString(),
+                    subtitle: "Due Members",
+                    iconColor: Colors.red,
+                    textColor: Colors.black,
+                  ),
+                ),
+                InkWell(
+                  onTap: () => onCardTap('renewed'),
+                  child: HorizontalCards(
+                    title: dashboardMembersCounts.newCount.toString(),
+                    subtitle: "Renew Members",
+                    iconColor: Colors.deepPurple,
+                    textColor: Colors.black,
+                  ),
                 ),
               ],
             ),
@@ -51,6 +78,7 @@ class DashboardMembers extends StatelessWidget {
     );
   }
 }
+
 
 
 class HorizontalCards extends StatefulWidget {

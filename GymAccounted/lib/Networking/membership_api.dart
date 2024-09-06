@@ -105,18 +105,41 @@ class MembershipService {
     required int planId,
     required String expiredDate,
     required String memberId,
-  }) async {
+    required String discountedAmount
+
+
+}) async {
     try {
       final response = await supabaseClient.from('Memberships').update({
         'joining_date': joiningDate,
         'plan_id': planId,
         'expired_date':expiredDate,
+        'discounted_amount':discountedAmount
       }).eq('member_id', memberId).select();
 
       if (response != null) {
         return {'success': true, 'message': 'Membership updated successfully.'};
       } else {
         return {'success': false, 'message': 'Failed to update membership: ${response}'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateMembershipTnxId({
+    required int tnxId,
+    required int memberId,
+  }) async {
+    try {
+      final response = await supabaseClient.from('Memberships').update({
+        'TnxId': tnxId.toString(),
+      }).eq('member_id', memberId).select();
+
+      if (response != null) {
+        return {'success': true, 'data': response};
+      } else {
+        return {'success': false, 'message': 'Failed to update membership tnxId: ${response}'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Error: $e'};
@@ -153,16 +176,18 @@ class MembershipService {
       final now = DateTime.now();
       // Filter records in Dart and update renew_plan
       final renewPlanUpdates = records.where((record) {
-        final joiningDateStr = record['joining_date'] as String;
+        final joiningDateStr = record['created_at'] as String;
         final joiningDate = DateTime.parse(joiningDateStr);
         return joiningDate.isBefore(now);
+
       }).map((record) => record['id']).toList();
 
       if (renewPlanUpdates.isNotEmpty) {
         final updateRenewPlanResponse = await supabase
             .from('Memberships')
-            .update({'renew_plan': false})
+            .update({'status': 1})
             .eq('gym_id', gymId)
+            .eq('status', 2)
             .filter('id', 'in', renewPlanUpdates)
             .select();
 
@@ -216,8 +241,8 @@ class MembershipService {
         'joining_date': joiningDate,
         'expired_date': expiredDate,
         'discounted_amount':discountedAmount,
-        'renew_plan': 1,
-        'status': 1,
+        'status': 2,
+        'created_at': DateTime.now().toIso8601String()
       }).eq('member_id', memberId).eq('gym_id', gymId).select();
 
       if (response != null) {

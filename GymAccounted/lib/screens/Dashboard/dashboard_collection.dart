@@ -69,7 +69,12 @@ class CollectionCardDetailsVertical extends StatelessWidget {
 }
 class DashboardCollection extends StatelessWidget {
   final DashboardAmount amounts;
-  const DashboardCollection({super.key, required this.amounts});
+  final void Function(String cardType) onCardTap;
+  const DashboardCollection({
+    Key? key,
+    required this.amounts,
+    required this.onCardTap, // Pass the callback here
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -86,50 +91,66 @@ class DashboardCollection extends StatelessWidget {
             ),
           ),
           // Removed extra SizedBox height to reduce space
-          Container(
-            margin: const EdgeInsets.only(top: 8.0), // Margin for space between header and items
-            child: GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, // Number of columns in the grid
-                childAspectRatio: 2, // Adjusted to fit your card's aspect ratio
-                crossAxisSpacing: 16, // Space between columns
-                mainAxisSpacing: 16, // Space between rows
-              ),
-              itemCount: 3, // Number of items
-              shrinkWrap: true, // To fit the height of the container
-              physics: NeverScrollableScrollPhysics(), // To prevent scrolling within the grid
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return CollectionCardDetailsVertical(
-                    topText: 'Yearly',
-                    bottomText: '₹${amounts.yearAmount.toInt()}',
-                    lineColor: Colors.blue,
-                    lineHeight: 50,
-                    lineWidth: 5,
-                    textSize: 14,
-                  );
-                } else if (index == 1) {
-                  return CollectionCardDetailsVertical(
-                    topText: 'Monthly',
-                    bottomText: '₹${amounts.monthAmount.toInt()}',
-                    lineColor: Colors.green,
-                    lineHeight: 50,
-                    lineWidth: 5,
-                    textSize: 14,
-                  );
-                } else {
-                  return CollectionCardDetailsVertical(
-                    topText: 'Weekly',
-                    bottomText: '₹${amounts.weekAmount.toInt()}',
-                    lineColor: Colors.red,
-                    lineHeight: 50,
-                    lineWidth: 5,
-                    textSize: 14,
-                  );
-                }
-              },
-            ),
+      Container(
+        margin: const EdgeInsets.only(top: 8.0), // Margin for space between header and items
+        child: GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, // Number of columns in the grid
+            childAspectRatio: 2, // Adjusted to fit your card's aspect ratio
+            crossAxisSpacing: 16, // Space between columns
+            mainAxisSpacing: 16, // Space between rows
           ),
+          itemCount: 3, // Number of items
+          shrinkWrap: true, // To fit the height of the container
+          physics: NeverScrollableScrollPhysics(), // To prevent scrolling within the grid
+          itemBuilder: (context, index) {
+            // Function to handle tap on each card
+            void handleCardTap(String period) {
+              // Perform your desired action here, like navigating or showing a message
+              onCardTap(period);
+            }
+
+            // Return the card wrapped with GestureDetector to make it tappable
+            if (index == 0) {
+              return GestureDetector(
+                onTap: () => handleCardTap('Yearly'),
+                child: CollectionCardDetailsVertical(
+                  topText: 'Yearly',
+                  bottomText: '₹${amounts.yearAmount.toInt()}',
+                  lineColor: Colors.blue,
+                  lineHeight: 50,
+                  lineWidth: 5,
+                  textSize: 14,
+                ),
+              );
+            } else if (index == 1) {
+              return GestureDetector(
+                onTap: () => handleCardTap('Monthly'),
+                child: CollectionCardDetailsVertical(
+                  topText: 'Monthly',
+                  bottomText: '₹${amounts.monthAmount.toInt()}',
+                  lineColor: Colors.green,
+                  lineHeight: 50,
+                  lineWidth: 5,
+                  textSize: 14,
+                ),
+              );
+            } else {
+              return GestureDetector(
+                onTap: () => handleCardTap('Weekly'),
+                child: CollectionCardDetailsVertical(
+                  topText: 'Weekly',
+                  bottomText: '₹${amounts.weekAmount.toInt()}',
+                  lineColor: Colors.red,
+                  lineHeight: 50,
+                  lineWidth: 5,
+                  textSize: 14,
+                ),
+              );
+            }
+          },
+        ),
+      )
         ],
       ),
     );

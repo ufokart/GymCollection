@@ -21,7 +21,7 @@ class Member {
   final String expiredAt;
   final String amountType;
   final String discountedAmount;
-
+  final String trxId;
   Member(
       {required this.id,
       required this.name,
@@ -40,7 +40,8 @@ class Member {
       required this.renew, // Added to constructor
       required this.expiredAt,
       required this.amountType,
-        required this.discountedAmount});
+        required this.discountedAmount,
+        required this.trxId});
 
   factory Member.fromJson(Map<String, dynamic> json) {
     return Member(
@@ -62,7 +63,9 @@ class Member {
       renew: json['renew_plan'] ?? false,
       expiredAt: json['expiredAt'] ?? "", // Added to fromJson
       amountType: json['amount_type'] ?? "",
-        discountedAmount: json['discountedAmount'] ?? ""
+        discountedAmount: json['discountedAmount'] ?? "",
+        trxId: json['trxId'] ?? ""
+
     );
   }
 
@@ -84,7 +87,8 @@ class Member {
       'renew_plan': renew,
       'expiredAt': expiredAt, // Added to toJson
       'amount_type': amountType,
-      'discounted_amount':discountedAmount
+      'discounted_amount':discountedAmount,
+      'TnxId':trxId
     };
   }
 }
