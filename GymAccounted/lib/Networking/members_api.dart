@@ -15,7 +15,7 @@ class MemberService {
     final response = await supabaseClient
         .from('Members')
         .select(
-        '*, Memberships(status, renew_plan, expired_date, discounted_amount, TnxId), Plans(plan_limit), Transaction(amount_type)')
+        '*, Memberships(status, renew_plan, expired_date, discounted_amount, TnxId, membership_period, days), Plans(plan_limit), Transaction(amount_type)')
         .eq('gym_id', gymId)
         .order('created_at', ascending: false);
       final data = response as List<dynamic>;
@@ -30,6 +30,8 @@ class MemberService {
         'expiredAt': membershipJson['expired_date'],
         'discountedAmount': membershipJson['discounted_amount'],
         'trxId': membershipJson['TnxId'],
+        'days': membershipJson['days'],
+        'membershipPeriod': membershipJson['membership_period'],
         'amount_type': amountType,
       });
     }).toList();
@@ -76,6 +78,36 @@ class MemberService {
     }
   }
 
+
+  Future<Map<String, dynamic>> getMemberByNameAndPhoneNo({
+    required String name,
+    required String phone,
+  }) async {
+    try {
+      final user = await gymUser.User.getUser();
+      final gymId = user?.id ?? "";
+      // Fetching data from the Members table where either name matches, phone matches, or both
+      final response = await supabaseClient
+          .from('Members')
+          .select()
+          .eq('gym_id', gymId)
+          .or('and(name.eq.$name,phone_no.eq.$phone),name.eq.$name,phone_no.eq.$phone') // Combined OR and AND conditions
+          .limit(1)
+          .select();
+      // Check if the response contains data
+      if (response == null || response.isEmpty) {
+        // Error from the Supabase query
+        return {'success': false};
+      } else {
+        // If a matching member exists
+        return {'success': true, 'message': 'Member phone number or name already exists'};
+      }
+    } catch (e) {
+      // Log and return the error message
+      print('Error: $e');
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
 
   Future<Map<String, dynamic>> updateMember({
     required int id,

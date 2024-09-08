@@ -17,6 +17,7 @@ import 'package:gymaccounted/Networking/membership_api.dart';
 import 'package:gymaccounted/Networking/transaction_api.dart';
 import 'package:gymaccounted/Networking/subscription_api.dart';
 import 'package:gymaccounted/screens/Plans/add_plans.dart';
+
 class AddMembers extends StatefulWidget {
   final Member? member; // Accept Member object
 
@@ -30,14 +31,18 @@ class _AddMembersState extends State<AddMembers> {
   File? _image;
   DateTime? _selectedJoiningDate;
   DateTime? _selectedDob;
+  bool _showPlanDetails = true;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _discountAmountController = TextEditingController();
+  final TextEditingController _discountAmountController =
+      TextEditingController();
+  final TextEditingController _daysController = TextEditingController();
 
   final ImagePicker _picker = ImagePicker();
   String _selectedGender = '';
+  int _selectedPeriod = 0;
   String _selectedBatch = '';
   String _selectedPlanId = ''; // Updated variable for selected plan ID
   String _selectedPaymentType = '';
@@ -62,6 +67,7 @@ class _AddMembersState extends State<AddMembers> {
     // Initialize fields if member data is provided
     if (widget.member != null) {
       final member = widget.member!;
+      _daysController.text = member.days.toString();
       _nameController.text = member.name;
       _emailController.text = member.email;
       _addressController.text = member.address ?? '';
@@ -69,6 +75,7 @@ class _AddMembersState extends State<AddMembers> {
       _discountAmountController.text = member.discountedAmount ?? '0';
       _selectedGender = member.gender ?? '';
       _selectedBatch = member.batch ?? '';
+      _selectedPeriod = member.membershipPeriod;
       _selectedPaymentType = member.amountType ?? '';
       _selectedPlanId =
           member.planId.toString() ?? ''; // Initialize selected plan ID
@@ -102,8 +109,6 @@ class _AddMembersState extends State<AddMembers> {
     }
     _fetchPlans();
   }
-
-
 
   Future<void> _fetchPlans() async {
     gymUser.User? user = await gymUser.User.getUser();
@@ -169,18 +174,28 @@ class _AddMembersState extends State<AddMembers> {
     }
   }
 
-  // Future<void> _getImage() async {
-  //   final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-  //
-  //   if (pickedFile != null) {
-  //     setState(() {
-  //       _image = File(pickedFile.path);
-  //     });
-  //     await convertImageToBase64(_image);
-  //   } else {
-  //     print('No image selected.');
-  //   }
-  // }
+  Future<bool> _checkMemberExists() async {
+    try {
+      // Call the service to get member details by name and phone number
+      final result = await _memberService.getMemberByNameAndPhoneNo(
+        name: _nameController.text,
+        phone: _phoneController.text,
+      );
+
+      // If the member exists, show an error message and return true
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${result['message']}')),
+        );
+        return true; // Member exists
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: $e')),
+      );
+    }
+    return false; // Member does not exist
+  }
 
   Future<void> _getImage() async {
     final source = await showDialog<ImageSource>(
@@ -263,6 +278,26 @@ class _AddMembersState extends State<AddMembers> {
         return; // Exit the method
       }
 
+      if ((_daysController.text.isEmpty || _daysController.text == '0') && _selectedPeriod == 1)  {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Days is required.')),
+        );
+        setState(() {
+          _isLoading = false; // Stop loading state
+        });
+        return; // Exit the method
+      }
+
+      if ((_discountAmountController.text.isEmpty || _discountAmountController.text == '0') && _selectedPeriod == 1)  {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Amount is required.')),
+        );
+        setState(() {
+          _isLoading = false; // Stop loading state
+        });
+        return; // Exit the method
+      }
+
       if (_selectedJoiningDate == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Joining Date is required.')),
@@ -272,16 +307,6 @@ class _AddMembersState extends State<AddMembers> {
         });
         return; // Exit the method
       }
-
-      // if (_selectedDob == null) {
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     SnackBar(content: Text('Date of Birth is required.')),
-      //   );
-      //   setState(() {
-      //     _isLoading = false; // Stop loading state
-      //   });
-      //   return; // Exit the method
-      // }
 
       if (_selectedPaymentType.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -293,15 +318,24 @@ class _AddMembersState extends State<AddMembers> {
         return; // Exit the method
       }
 
+      
+
       try {
         gymUser.User? user = await gymUser.User.getUser();
         String? id = user?.id ?? "";
         DateFormat dateFormat = DateFormat('yyyy-MM-dd');
         String formattedJoiningDate = dateFormat.format(_selectedJoiningDate!);
-        String formattedDob = _selectedDob != null ? dateFormat.format(_selectedDob!) : "";
-
+        String formattedDob =
+            _selectedDob != null ? dateFormat.format(_selectedDob!) : "";
         // Check if updating or inserting
         if (widget.member == null) {
+          bool memberExists = await _checkMemberExists();
+          if (memberExists) {
+            setState(() {
+              _isLoading = false; // Stop loading state
+            });
+            return; // Exit if the member already exists
+          }
           // Insert new member
           final result = await _memberService.insertMember(
             name: _nameController.text,
@@ -371,10 +405,8 @@ class _AddMembersState extends State<AddMembers> {
   Future<void> _handleMembershipAndTransaction(Member insertedMember) async {
     // Check if member ID is not null
 
-
-
     final selectedPlan = _plans.firstWhere(
-          (plan) => plan.id == insertedMember.planId,
+      (plan) => plan.id == insertedMember.planId,
       orElse: () => Plan(
         id: 0,
         planName: 'planName',
@@ -385,18 +417,20 @@ class _AddMembersState extends State<AddMembers> {
     );
     final joiningDate = _selectedJoiningDate ?? DateTime.now();
     final plansLimit = selectedPlan.planLimit.toInt();
-    final futureDate = DateTime(joiningDate.year, joiningDate.month + plansLimit, joiningDate.day);
+    final futureDate = _selectedPeriod == 1  ? joiningDate.add(Duration(days: int.parse(_daysController.text))) : DateTime(
+        joiningDate.year, joiningDate.month + plansLimit, joiningDate.day);
     final expiredDate = DateFormat('dd-MMMM-yyyy').format(futureDate);
 
     if (widget.member != null) {
       // Update Membership
       final membershipResponse = await _membershipService.updateMembership(
-        joiningDate: insertedMember.joiningDate.toString(),
-        planId: insertedMember.planId,
-        expiredDate: expiredDate,
-        memberId: insertedMember.id.toString(),
-          discountedAmount: _discountAmountController.text
-      );
+          joiningDate: insertedMember.joiningDate.toString(),
+          planId: insertedMember.planId,
+          expiredDate: expiredDate,
+          memberId: insertedMember.id.toString(),
+          discountedAmount: _discountAmountController.text,
+          membershipPeriod: _selectedPeriod.toString(),
+          days: _daysController.text);
 
       if (membershipResponse['success'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -408,7 +442,9 @@ class _AddMembersState extends State<AddMembers> {
       }
       // Update Transaction
       //final planAmount = selectedPlan.planPrice;
-      final planAmount = _discountAmountController.text.isEmpty ? selectedPlan.planPrice : _discountAmountController.text;
+      final planAmount = _discountAmountController.text.isEmpty
+          ? selectedPlan.planPrice
+          : _discountAmountController.text;
 
       final transactionResponse = await _transactionService.updateTransaction(
           planId: insertedMember.planId,
@@ -416,11 +452,12 @@ class _AddMembersState extends State<AddMembers> {
           memberId: insertedMember.id,
           amountType: _selectedPaymentType.toString(),
           date: insertedMember.joiningDate.toString(),
-          planName: selectedPlan.planName,
-          planLimit: selectedPlan.planLimit.toString(),
+          planName: _selectedPeriod == 0 ? selectedPlan.planName : "",
+          planLimit:  _selectedPeriod == 0 ? selectedPlan.planLimit.toString() : "",
           memberName: insertedMember.name,
           memberPhone: insertedMember.phoneNo,
-          tnxId: widget.member?.trxId ?? '0');
+          tnxId: widget.member?.trxId ?? '0',
+          days: _daysController.text);
 
       if (transactionResponse['success'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -437,15 +474,16 @@ class _AddMembersState extends State<AddMembers> {
     } else {
       // If member ID is null, insert new membership and transaction
       final insertResponse = await _membershipService.insetMembership(
-        gymId: insertedMember.gymId,
-        joiningDate: insertedMember.joiningDate.toString(),
-        memberId: insertedMember.id,
-        planId: insertedMember.planId,
-        status: 1,
-        renew: false,
-        expiredDate: expiredDate,
-        discountedAmount: _discountAmountController.text
-      );
+          gymId: insertedMember.gymId,
+          joiningDate: insertedMember.joiningDate.toString(),
+          memberId: insertedMember.id,
+          planId: insertedMember.planId,
+          status: 1,
+          renew: false,
+          expiredDate: expiredDate,
+          discountedAmount: _discountAmountController.text,
+          membershipPeriod: _selectedPeriod.toString(),
+          days: _daysController.text);
 
       if (insertResponse['success'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -468,7 +506,9 @@ class _AddMembersState extends State<AddMembers> {
         ),
       );
 
-      final planAmount = _discountAmountController.text.isEmpty ? selectedPlan.planPrice : _discountAmountController.text;
+      final planAmount = _discountAmountController.text.isEmpty
+          ? selectedPlan.planPrice
+          : _discountAmountController.text;
 
       final transactionResponse = await _transactionService.insertTransaction(
         gymId: insertedMember.gymId,
@@ -477,10 +517,11 @@ class _AddMembersState extends State<AddMembers> {
         amountType: _selectedPaymentType.toString(),
         memberId: insertedMember.id,
         date: insertedMember.joiningDate.toString(),
-        planName: selectedPlan.planName,
-        planLimit: selectedPlan.planLimit.toString(),
+        planName: _selectedPeriod == 0 ? selectedPlan.planName : "",
+        planLimit:  _selectedPeriod == 0 ? selectedPlan.planLimit.toString() : "",
         memberName: insertedMember.name,
         memberPhone: insertedMember.phoneNo,
+        days:  _daysController.text
       );
 
       if (transactionResponse['success'] == false) {
@@ -491,9 +532,10 @@ class _AddMembersState extends State<AddMembers> {
         );
         return; // Early exit if insertion fails
       }
-      final updateMembershipTnxIdResponse = await _membershipService.updateMembershipTnxId(
-        tnxId:  transactionResponse['data'][0]['id'],
-        memberId:  insertedMember.id,
+      final updateMembershipTnxIdResponse =
+          await _membershipService.updateMembershipTnxId(
+        tnxId: transactionResponse['data'][0]['id'],
+        memberId: insertedMember.id,
       );
       if (updateMembershipTnxIdResponse['success'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -527,377 +569,393 @@ class _AddMembersState extends State<AddMembers> {
     final phoneRegex = RegExp(r'^\+?1?\d{9,15}$');
     if (value == null || value.isEmpty) {
       return 'Phone is required';
+    } else if (value.length < 10) {
+      return 'Please enter a valid phone number';
     } else if (!phoneRegex.hasMatch(value)) {
       return 'Enter a valid phone number';
     }
     return null;
   }
 
+  String getSelectedPlanName() {
+    final selectedPlan = _plans.firstWhere(
+      (plan) => plan.id.toString() == _selectedPlanId,
+      orElse: () => Plan(
+          id: 0,
+          planName: 'No Plan Selected',
+          gymId: "0",
+          planLimit: 0,
+          planPrice: "0"), // Return a default Plan if none is found
+    );
+    return _selectedPlanId == ''
+        ? 'No Plan Selected'
+        : '₹ ${selectedPlan.planPrice}'; // Return the plan name or a default message
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.member == null ? 'Add Member' : 'Edit Member',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        appBar: AppBar(
+          title: Text(
+            widget.member == null ? 'Add Member' : 'Edit Member',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
         ),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-      ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            child: Container(
+        body: Stack(
+          children: [
+            SingleChildScrollView(
               padding: EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Center(
-                      child: GestureDetector(
-                        onTap: _getImage,
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.black,
-                              width: 2.0,
-                            ),
+                child: Form(
+                  key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Center(
+                    child: GestureDetector(
+                      onTap: _getImage,
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.black,
+                            width: 2.0,
                           ),
-                          child: ClipOval(
-                            child: _image == null
-                                ? Icon(
-                                    Icons.add_a_photo,
-                                    size: 24.0,
-                                    color: Colors.black,
-                                  )
-                                : Image.file(
-                                    _image!,
-                                    width: 100,
-                                    height: 100,
-                                    fit: BoxFit.cover,
-                                  ),
-                          ),
+                        ),
+                        child: ClipOval(
+                          child: _image == null
+                              ? Icon(
+                                  Icons.add_a_photo,
+                                  size: 24.0,
+                                  color: Colors.black,
+                                )
+                              : Image.file(
+                                  _image!,
+                                  width: 100,
+                                  height: 100,
+                                  fit: BoxFit.cover,
+                                ),
                         ),
                       ),
                     ),
-                    SizedBox(height: 20),
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Name',
-                        prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Name is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 10),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: _validateEmail,
-                    ),
-                    SizedBox(height: 10),
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: InputDecoration(
-                        labelText: 'Phone',
-                        prefixIcon: Icon(Icons.phone),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: _validatePhone,
-                    ),
-                    SizedBox(height: 10),
-                    TextFormField(
-                      controller: _addressController,
-                      decoration: InputDecoration(
-                        labelText: 'Address',
-                        prefixIcon: Icon(Icons.home),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Address is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 20),
-                    Column(
+                  ),
+                  SizedBox(height: 20),
+                  _buildTextFormField(
+                    controller: _nameController,
+                    label: 'Name',
+                    icon: Icons.person,
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Name is required'
+                        : null,
+                  ),
+                  SizedBox(height: 10),
+                  _buildTextFormField(
+                    controller: _emailController,
+                    label: 'Email',
+                    icon: Icons.email,
+                    validator: _validateEmail,
+                  ),
+                  SizedBox(height: 10),
+                  _buildTextFormField(
+                    controller: _phoneController,
+                    label: 'Phone',
+                    icon: Icons.phone,
+                    keyboardType: TextInputType.phone,
+                    validator: _validatePhone,
+                  ),
+                  SizedBox(height: 10),
+                  _buildTextFormField(
+                    controller: _addressController,
+                    label: 'Address',
+                    icon: Icons.home,
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Address is required'
+                        : null,
+                  ),
+                  SizedBox(height: 20),
+                  _buildChoiceChipSection(
+                    title: 'Gender',
+                    options: ['Male', 'Female'],
+                    selectedOption: _selectedGender,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedGender = selected;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 10),
+                  _buildChoiceChipSection(
+                    title: 'Batch',
+                    options: ['Morning', 'Noon', 'Evening'],
+                    selectedOption: _selectedBatch,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedBatch = selected;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 10),
+                  _buildDateSelection(
+                    title: 'Date of Birth',
+                    selectedDate: _selectedDob,
+                    onSelectDate: () => _selectDate(context, isDob: true),
+                  ),
+                  SizedBox(height: 10),
+                  _buildDateSelection(
+                    title: 'Select Joining Date',
+                    selectedDate: _selectedJoiningDate,
+                    onSelectDate: () => _selectDate(context),
+                  ),
+                  SizedBox(height: 20),
+                  _buildChoiceChipSection(
+                    title: 'Plan Period',
+                    options: ['Month','Days'],
+                    selectedOption: _selectedPeriod == 1 ? 'Days' : 'Month',
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedPeriod = selected == 'Days' ? 1 : 0;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 20),
+                  Visibility(
+                    visible: _selectedPeriod == 0,
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Gender',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Wrap(
-                          children: [
-                            ChoiceChip(
-                              label: Text('Male'),
-                              selected: _selectedGender == 'Male',
-                              onSelected: (selected) {
-                                setState(() {
-                                  _selectedGender = selected ? 'Male' : '';
-                                });
-                              },
-                            ),
-                            SizedBox(width: 10),
-                            ChoiceChip(
-                              label: Text('Female'),
-                              selected: _selectedGender == 'Female',
-                              onSelected: (selected) {
-                                setState(() {
-                                  _selectedGender = selected ? 'Female' : '';
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Batch',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Wrap(
-                          children: [
-                            ChoiceChip(
-                              label: Text('Morning'),
-                              selected: _selectedBatch == 'Morning',
-                              onSelected: (selected) {
-                                setState(() {
-                                  _selectedBatch = selected ? 'Morning' : '';
-                                });
-                              },
-                            ),
-                            SizedBox(width: 10),
-                            ChoiceChip(
-                              label: Text('Noon'),
-                              selected: _selectedBatch == 'Noon',
-                              onSelected: (selected) {
-                                setState(() {
-                                  _selectedBatch = selected ? 'Noon' : '';
-                                });
-                              },
-                            ),
-                            SizedBox(width: 10),
-                            ChoiceChip(
-                              label: Text('Evening'),
-                              selected: _selectedBatch == 'Evening',
-                              onSelected: (selected) {
-                                setState(() {
-                                  _selectedBatch = selected ? 'Evening' : '';
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Select Joining Date',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                        _buildDropdownSection(
+                          title: 'Select Plan',
+                          items: _plans.map((Plan plan) {
+                            return DropdownMenuItem<String>(
+                              value: plan.id.toString(),
+                              child: Text(plan.planName),
+                            );
+                          }).toList(),
+                          selectedValue: _selectedPlanId.isEmpty ? null : _selectedPlanId,
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedPlanId = newValue!;
+                            });
+                          },
+                          onAddPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => AddPlans()),
+                            ).then((_) {
+                              setState(() {
+                                _fetchPlans();
+                              });
+                            });
+                          },
                         ),
                         SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () => _selectDate(context),
-                          child: Text(
-                            _selectedJoiningDate == null
-                                ? 'Select Date'
-                                : DateFormat('MMM dd, yyyy')
-                                    .format(_selectedJoiningDate!),
-                            style: TextStyle(fontSize: 16),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                        ),
+                        _buildPlanAmountSection(),
                       ],
                     ),
-                    SizedBox(height: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Date of Birth',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () => _selectDate(context, isDob: true),
-                          child: Text(
-                            _selectedDob == null
-                                ? 'Select Date'
-                                : DateFormat('MMM dd, yyyy')
-                                    .format(_selectedDob!),
-                            style: TextStyle(fontSize: 16),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Select Plan',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: _selectedPlanId.isEmpty ? null : _selectedPlanId,
-                                hint: Text('Select Plan'),
-                                items: _plans.map((Plan plan) {
-                                  return DropdownMenuItem<String>(
-                                    value: plan.id.toString(),
-                                    child: Text(plan.planName),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    _selectedPlanId = newValue!;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Plan is required';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.add),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => AddPlans()),
-                                ).then((_) {
-                                  setState(() {
-                                    _fetchPlans();
-                                  });
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    TextFormField(
-                      controller: _discountAmountController,
+                  ),
+                  // Show this field if "Days" is selected
+                  Visibility(
+                    visible: _selectedPeriod == 1,
+                    child: TextFormField(
+                      controller: _daysController,
                       decoration: InputDecoration(
-                        labelText: 'Discount Amount',
-                        prefixIcon: Icon(Icons.price_check),
+                        labelText: 'Number of Days',
+                        prefixIcon: Icon(Icons.calendar_today),
                         border: OutlineInputBorder(),
                       ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) => value == null || value.isEmpty ? 'Number of days is required' : null,
                     ),
-                    SizedBox(height: 10),
+                  ),
+                  SizedBox(height: 20),
+                  _buildTextFormField(
+                    controller: _discountAmountController,
+                    label: _selectedPeriod == 1 ? 'Amount' : 'Discount Amount',
+                    icon: Icons.price_check,
+                    keyboardType: TextInputType.number,
+                    validator: (value) =>  _selectedPeriod == 1 && (value == null || value.isEmpty) ? 'Amount is required' : null,
+                  ),
+                  SizedBox(height: 10),
+                  _buildChoiceChipSection(
+                    title: 'Payment Type',
+                    options: ['Cash', 'Online'],
+                    selectedOption: _selectedPaymentType,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedPaymentType = selected;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _submit,
+                    child: Text('Submit'),
+                  ),
+                ],
+              )),
+            ),
+            if (_isLoading)
+              Center(
+                child: CircularProgressIndicator(),
+              ),
+          ],
+        ));
+  }
 
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Payment Type',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Wrap(
-                          children: [
-                            ChoiceChip(
-                              label: Text('Cash'),
-                              selected: _selectedPaymentType == 'Cash',
-                              onSelected: (selected) {
-                                setState(() {
-                                  _selectedPaymentType = selected ? 'Cash' : '';
-                                });
-                              },
-                            ),
-                            SizedBox(width: 10),
-                            ChoiceChip(
-                              label: Text('Online'),
-                              selected: _selectedPaymentType == 'Online',
-                              onSelected: (selected) {
-                                setState(() {
-                                  _selectedPaymentType =
-                                      selected ? 'Online' : '';
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _submit,
-                      child: Text('Submit'),
-                    ),
-                  ],
-                ),
+  Widget _buildTextFormField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(),
+      ),
+      validator: validator,
+    );
+  }
+
+  Widget _buildChoiceChipSection({
+    required String title,
+    required List<String> options,
+    required String selectedOption,
+    required void Function(String selected) onSelected,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          children: options.map((option) {
+            return ChoiceChip(
+              label: Text(option),
+              selected: selectedOption == option,
+              onSelected: (selected) {
+                onSelected(selected ? option : '');
+              },
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateSelection({
+    required String title,
+    required DateTime? selectedDate,
+    required void Function() onSelectDate,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        SizedBox(height: 10),
+        ElevatedButton(
+          onPressed: onSelectDate,
+          child: Text(
+            selectedDate == null
+                ? 'Select Date'
+                : DateFormat('MMM dd, yyyy').format(selectedDate),
+            style: TextStyle(fontSize: 16),
+          ),
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdownSection({
+    required String title,
+    required List<DropdownMenuItem<String>> items,
+    required String? selectedValue,
+    required void Function(String?) onChanged,
+    required VoidCallback onAddPressed,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: selectedValue,
+                hint: Text('Select Plan'),
+                items: items,
+                onChanged: onChanged,
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Plan is required' : null,
               ),
             ),
-          ), // Your existing form building method
-          if (_isLoading)
-            Center(
-              child: CircularProgressIndicator(),
+            IconButton(
+              icon: Icon(Icons.add),
+              onPressed: onAddPressed,
             ),
-        ],
-      ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPlanAmountSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Plan Amount',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        SizedBox(height: 10),
+        Text(
+          getSelectedPlanName(),
+          style: TextStyle(
+            fontWeight: FontWeight.normal,
+            fontSize: 16,
+          ),
+        ),
+      ],
     );
   }
 }

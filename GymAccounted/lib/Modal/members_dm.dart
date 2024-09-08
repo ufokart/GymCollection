@@ -22,6 +22,8 @@ class Member {
   final String amountType;
   final String discountedAmount;
   final String trxId;
+  final int days;
+  final int membershipPeriod;
   Member(
       {required this.id,
       required this.name,
@@ -41,7 +43,9 @@ class Member {
       required this.expiredAt,
       required this.amountType,
         required this.discountedAmount,
-        required this.trxId});
+        required this.trxId,
+      required this.days,
+      required this.membershipPeriod});
 
   factory Member.fromJson(Map<String, dynamic> json) {
     return Member(
@@ -64,8 +68,9 @@ class Member {
       expiredAt: json['expiredAt'] ?? "", // Added to fromJson
       amountType: json['amount_type'] ?? "",
         discountedAmount: json['discountedAmount'] ?? "",
-        trxId: json['trxId'] ?? ""
-
+        trxId: json['trxId'] ?? "",
+        days: json['days'] ?? 0,
+        membershipPeriod: json['membershipPeriod'] ?? 1
     );
   }
 
@@ -88,7 +93,9 @@ class Member {
       'expiredAt': expiredAt, // Added to toJson
       'amount_type': amountType,
       'discounted_amount':discountedAmount,
-      'TnxId':trxId
+      'TnxId':trxId,
+      'days': days,
+      'membership_period': membershipPeriod
     };
   }
 }

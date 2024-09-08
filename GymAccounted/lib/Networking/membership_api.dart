@@ -74,7 +74,9 @@ class MembershipService {
     required int status,
     required bool renew,
     required String expiredDate,
-    required String discountedAmount
+    required String discountedAmount,
+    required String membershipPeriod,
+    required String days
   }) async {
     try {
       final response = await supabaseClient.from('Memberships').insert({
@@ -85,7 +87,9 @@ class MembershipService {
         'status': status,
         'renew_plan': renew,
         'expired_date': expiredDate,
-        'discounted_amount':discountedAmount
+        'discounted_amount':discountedAmount,
+        'membership_period':membershipPeriod,
+        'days':days
       }).select();
       // Debug print to inspect the response
       print('Response: $response');
@@ -105,8 +109,9 @@ class MembershipService {
     required int planId,
     required String expiredDate,
     required String memberId,
-    required String discountedAmount
-
+    required String discountedAmount,
+    required String membershipPeriod,
+    required String days
 
 }) async {
     try {
@@ -114,7 +119,9 @@ class MembershipService {
         'joining_date': joiningDate,
         'plan_id': planId,
         'expired_date':expiredDate,
-        'discounted_amount':discountedAmount
+        'discounted_amount':discountedAmount,
+        'membership_period':membershipPeriod,
+        'days':days
       }).eq('member_id', memberId).select();
 
       if (response != null) {

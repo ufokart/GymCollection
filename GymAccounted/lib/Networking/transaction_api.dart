@@ -38,7 +38,8 @@ class TransactionService {
       required String planName,
       required String planLimit,
       required String memberName,
-      required String memberPhone}) async {
+      required String memberPhone,
+        required String days}) async {
     try {
       final response = await _client.from('Transaction').insert({
         'gym_id': gymId,
@@ -50,7 +51,8 @@ class TransactionService {
         'plan_name': planName,
         'plan_limit': planLimit,
         'member_name': memberName,
-        'member_phone_no': memberPhone
+        'member_phone_no': memberPhone,
+        'days': days
       }).select();
       // Debug print to inspect the response
       print('Response: $response');
@@ -74,7 +76,8 @@ class TransactionService {
     required String planLimit,
     required String memberName,
     required String memberPhone,
-    required String tnxId
+    required String tnxId,
+    required String days
   }) async {
     try {
       final response = await _client
@@ -87,7 +90,8 @@ class TransactionService {
             'plan_name': planName,
             'plan_limit': planLimit,
             'member_name': memberName,
-            'member_phone_no': memberPhone
+            'member_phone_no': memberPhone,
+            'days': days
           })
           .eq('member_id', memberId)
           .eq('id', int.parse(tnxId))
