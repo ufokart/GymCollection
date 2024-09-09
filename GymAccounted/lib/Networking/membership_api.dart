@@ -238,6 +238,8 @@ class MembershipService {
     required String expiredDate,
     required String planId,
     required String discountedAmount,
+    required String membershipPeriod,
+    required String days
   }) async {
     try {
       final user = await gymUser.User.getUser();
@@ -249,7 +251,9 @@ class MembershipService {
         'expired_date': expiredDate,
         'discounted_amount':discountedAmount,
         'status': 2,
-        'created_at': DateTime.now().toIso8601String()
+        'created_at': DateTime.now().toIso8601String(),
+        'membership_period':membershipPeriod,
+        'days':days
       }).eq('member_id', memberId).eq('gym_id', gymId).select();
 
       if (response != null) {

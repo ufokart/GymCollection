@@ -11,6 +11,7 @@ class Transaction {
   final String planLimit;
   final String memberName;
   final String memberPhone;
+  final String days;
 
   Transaction({
     required this.id,
@@ -25,6 +26,7 @@ class Transaction {
     required this.planLimit,
     required this.memberName,
     required this.memberPhone,
+    required this.days,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -40,7 +42,8 @@ class Transaction {
       planName: json['plan_name'] ?? 'No Plan', // Default value for planName
       planLimit: json['plan_limit'] ?? '0', // Default value for planLimit
       memberName: json['member_name'] ?? 'Unknown', // Default value for memberName
-      memberPhone: json['member_phone_no'] ?? 'N/A', // Default value for memberPhone
+      memberPhone: json['member_phone_no'] ?? 'N/A',
+      days: json['days'] ?? '0'// Default value for memberPhone
     );
   }
 }
