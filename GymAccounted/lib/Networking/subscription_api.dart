@@ -2,10 +2,16 @@ import 'package:gymaccounted/Modal/subcription_dm.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:gymaccounted/Modal/UserModal.dart' as gymUser;
 import 'package:gymaccounted/Modal/purchased_plans_dm.dart';
+import 'package:intl/intl.dart';
+
 class SubscriptionApi {
   final SupabaseClient _client;
 
   SubscriptionApi(this._client);
+  DateTime parseDateString(String dateStr) {
+    final dateFormat = DateFormat('yyyy-MM-dd'); // Adjust if needed
+    return dateFormat.parse(dateStr);
+  }
 
   Future<List<Subscription>> getSubscriptionList() async {
     final response = await _client.from('Subscription').select();
@@ -89,6 +95,51 @@ class SubscriptionApi {
       }
     } catch (e) {
       return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  Future<void> updateExpiredSubscription() async {
+    final supabase = Supabase.instance.client;
+    final user = await gymUser.User.getUser();
+    final gymId = user?.id ?? "";
+
+    try {
+      // Fetch records where gym_id matches
+      final response = await supabase
+          .from('Premium_Purchased')
+          .select('*')
+          .eq('gym_id', gymId)
+          .select();
+      if (response == null) {
+        print('Error fetching records');
+        return;
+      }
+      final records = response as List<dynamic>;
+      // Get the current date
+      final now = DateTime.now();
+      // Filter records and update status
+      final statusUpdateIds = records.where((record) {
+        final expiredDateStr = record['expire_date'] as String;
+        final expiredDate = parseDateString(expiredDateStr);
+        return expiredDate.isBefore(now);
+      }).map((record) => record['id']).toList();
+
+      if (statusUpdateIds.isNotEmpty) {
+        final updateStatusResponse = await supabase
+            .from('Premium_Purchased')
+            .update({'status': 0, 'failed_reason': 'Plan Expired'})
+            .eq('gym_id', gymId)
+            .filter('id', 'in', statusUpdateIds)
+            .select();
+
+        if (updateStatusResponse == null) {
+          print('Error updating status:');
+        } else {
+          print('Successfully updated status.');
+        }
+      }
+    } catch (e) {
+      print('Unexpected error: $e');
     }
   }
 }

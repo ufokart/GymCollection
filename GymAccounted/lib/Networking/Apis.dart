@@ -7,6 +7,7 @@ import 'package:gymaccounted/Modal/tranaction_dm.dart';
 import 'package:gymaccounted/Modal/dahboard_dm.dart';
 import 'package:gymaccounted/Modal/UserModal.dart' as gymUser;
 import 'package:gymaccounted/Modal/gym_dm.dart';
+import 'package:intl/intl.dart'; // Ensure you have this package imported
 
 class GymService {
   final SupabaseClient _client;
@@ -17,40 +18,59 @@ class GymService {
     final supabase = Supabase.instance.client;
     final user = await gymUser.User.getUser();
     final gymId = user?.id ?? "";
-    final today = DateTime.now().toIso8601String().split('T').first;
-    // Get today's new members
-    final todaysNewMembersResponse = await supabase
-        .from('Memberships')
-        .select()
-        .eq('gym_id', gymId)
-        .eq('joining_date', today);
-    final todaysNewMembers = todaysNewMembersResponse.length;
 
-    // Get due payments
-    final duePaymentsResponse = await supabase
-        .from('Memberships')
-        .select()
-        .eq('gym_id', gymId)
-        .eq('joining_date', today)
-        .eq('status', 0); // Assuming due payments are for active memberships
-    final duePayments = duePaymentsResponse.length;
+    // Get the start and end of today in ISO format without time part
+    final DateTime now = DateTime.now();
+    final String todayStart = DateTime(now.year, now.month, now.day).toIso8601String();
+    final String todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59).toIso8601String();
 
-    // Get renew payments
-    final renewPaymentsResponse = await supabase
-        .from('Memberships')
-        .select()
-        .eq('gym_id', gymId)
-        .eq('joining_date', today)
-        .eq('renew_plan',
-            true); // Assuming due payments are for active memberships
-    final renewPayments = renewPaymentsResponse.length;
+    try {
+      // Get today's new members
+      final todaysNewMembersResponse = await supabase
+          .from('Memberships')
+          .select()
+          .eq('gym_id', gymId)
+          .gte('created_at', todayStart)
+          .lte('created_at', todayEnd)
+          .eq('status', 1);
 
-    // Return the result as a MembershipSummary object
-    return DashboardMembershipSummary(
-        todaysNewMembers: todaysNewMembers,
-        duePayments: duePayments,
-        renewPayments: renewPayments);
+      // Parse today's new members count
+
+      // Get due payments (assuming due payments are those with status 0)
+      final String formattedToday = DateFormat('dd-MMMM-yyyy').format(DateTime.now());
+      final duePaymentsResponse = await supabase
+          .from('Memberships')
+          .select()
+          .eq('gym_id', gymId)
+           .eq('expired_date', formattedToday)
+          .eq('status', 0); // Assuming due payments are for active memberships
+
+      // Get renew payments (assuming renew_plan is true)
+      final renewPaymentsResponse = await supabase
+          .from('Memberships')
+          .select()
+          .eq('gym_id', gymId)
+          .gte('created_at', todayStart)
+          .lte('created_at', todayEnd)
+          .eq('status', 2); // Assuming renew payments are for renewed memberships
+
+      // Return the result as a DashboardMembershipSummary object
+      return DashboardMembershipSummary(
+        todaysNewMembers: todaysNewMembersResponse,
+        duePayments: duePaymentsResponse,
+        renewPayments: renewPaymentsResponse,
+      );
+    } catch (e) {
+      // Handle any errors that occur during the database queries
+      debugPrint('Error fetching dashboard summary: $e');
+      return DashboardMembershipSummary(
+        todaysNewMembers: [],
+        duePayments: [],
+        renewPayments: [],
+      );
+    }
   }
+
 
   Future<List<Transaction>> fetchTransactions() async {
     final user = await gymUser.User.getUser();

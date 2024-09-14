@@ -10,15 +10,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:gymaccounted/Modal/dahboard_dm.dart';
 import 'package:gymaccounted/Modal/tranaction_dm.dart';
 import 'package:gymaccounted/Networking/users_apis.dart';
+import 'package:gymaccounted/screens/Dashboard/dashboard_update.dart';
 import 'package:gymaccounted/screens/Members/members.dart';
 
 class Dashboard extends StatefulWidget {
   final void Function(String cardType) onNavigateToMembers; // Update callback to accept a parameter
-  final void Function(String cardType) onNavigateToToday; // Update callback to accept a parameter
+  final void Function(String cardType) onNavigateToToday;
+  final void Function(List<Map<String, dynamic>> data, String cardType) onNavigateToTodayMembers; // Update callback to accept a parameter
+// Update callback to accept a parameter
   const Dashboard({
     Key? key,
     required this.onNavigateToMembers,
-    required this.onNavigateToToday// Pass the callback here
+    required this.onNavigateToToday,// Pass the callback here
+    required this.onNavigateToTodayMembers// Pass the callback here
   }) : super(key: key);
   @override
   DashboardState createState() => DashboardState(); // Corrected state class instantiation
@@ -75,6 +79,12 @@ class DashboardState extends State<Dashboard> {
     }
   }
 
+  void _onNavigateToTodayMembers(List<Map<String, dynamic>> data, String value) {
+    if (widget.onNavigateToToday != null) {
+      widget.onNavigateToTodayMembers!(data, value); // Trigger the callback to HomeScreen
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -112,7 +122,10 @@ class DashboardState extends State<Dashboard> {
                       ),
                     ),
                   ),
-                  DashboardTodayData(dashboardMembershipSummary: membershipSummary),
+                  DashboardTodayData(onCardTap: (data, cardType) {
+                    _onNavigateToTodayMembers(data, cardType); // Example: Display the type of card tapped
+                    // You can perform actions based on cardType, e.g., navigate to a detailed view
+                  },dashboardMembershipSummary: membershipSummary),
                   DashboardCollection(onCardTap: (cardType) {
                     _onNavigateToToday(cardType); // Example: Display the type of card tapped
                     // You can perform actions based on cardType, e.g., navigate to a detailed view
@@ -125,9 +138,11 @@ class DashboardState extends State<Dashboard> {
                       // You can perform actions based on cardType, e.g., navigate to a detailed view
                     }
                   ),
+                  ExpiringMembersList(gymService: _gymService),
                 ],
               ),
             );
+
           } else {
             return Center(child: Text('No data available'));
           }

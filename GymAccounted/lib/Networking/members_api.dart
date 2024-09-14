@@ -78,6 +78,40 @@ class MemberService {
     }
   }
 
+  //getMemberById
+
+
+  Future<List<Member>> getMembersById(List<int> memberIds) async {
+    final user = await gymUser.User.getUser();
+    final gymId = user?.id ?? "";
+    String orCondition = memberIds.map((id) => 'id.eq.$id').join(',');
+
+    final response = await supabaseClient
+        .from('Members')
+        .select(
+        '*, Memberships(status, renew_plan, expired_date, discounted_amount, TnxId, membership_period, days), Plans(plan_limit), Transaction(amount_type)')
+        .eq('gym_id', gymId)
+        .or(orCondition)
+        .order('created_at', ascending: false);
+    final data = response as List<dynamic>;
+    return data.map((json) {
+      final membershipJson = json['Memberships'];
+      final transaction = json['Transaction'];
+      final amountType = transaction[0]['amount_type'];
+      return Member.fromJson({
+        ...json,
+        'status': membershipJson['status'],
+        'renew': membershipJson['renew_plan'],
+        'expiredAt': membershipJson['expired_date'],
+        'discountedAmount': membershipJson['discounted_amount'],
+        'trxId': membershipJson['TnxId'],
+        'days': membershipJson['days'],
+        'membershipPeriod': membershipJson['membership_period'],
+        'amount_type': amountType,
+      });
+    }).toList();
+  }
+
 
   Future<Map<String, dynamic>> getMemberByNameAndPhoneNo({
     required String name,

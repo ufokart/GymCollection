@@ -252,6 +252,70 @@ class _AddMembersState extends State<AddMembers> {
     }
   }
 
+  void _showMemberExistsDialog(String existingMemberDetail) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Member Already Exists'),
+          content: Text(
+              'A member with the same $existingMemberDetail already exists. What would you like to do?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Dismiss the dialog
+                setState(() {
+                  _isLoading = false;
+                });
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Dismiss the dialog
+                setState(() {
+                  _isLoading = true;
+                });
+                gymUser.User? user = await gymUser.User.getUser();
+                String? id = user?.id ?? "";
+                DateFormat dateFormat = DateFormat('yyyy-MM-dd');
+                String formattedJoiningDate = dateFormat.format(_selectedJoiningDate!);
+                String formattedDob =
+                _selectedDob != null ? dateFormat.format(_selectedDob!) : "";
+                // Insert new member
+                final result = await _memberService.insertMember(
+                  name: _nameController.text,
+                  address: _addressController.text,
+                  email: _emailController.text,
+                  phone: _phoneController.text,
+                  batch: _selectedBatch,
+                  gender: _selectedGender,
+                  joining_date: formattedJoiningDate,
+                  dob: formattedDob,
+                  gymId: id,
+                  image: _imageBase64,
+                  planId: int.parse(_selectedPlanId), // Pass the selected plan ID
+                );
+
+                if (result['success'] == false) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${result['message']}')),
+                  );
+                  setState(() {
+                    _isLoading = false;
+                  });
+                } else {
+                  // Handle membership and transaction
+                  await _handleMembershipAndTransaction(result['data']);
+                }
+              },
+              child: Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+  }
   Future<void> _submit() async {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() {
@@ -331,35 +395,37 @@ class _AddMembersState extends State<AddMembers> {
         if (widget.member == null) {
           bool memberExists = await _checkMemberExists();
           if (memberExists) {
+            String existingMemberDetail = "phone number or name";
+            _showMemberExistsDialog(existingMemberDetail);
             setState(() {
               _isLoading = false; // Stop loading state
             });
-            return; // Exit if the member already exists
-          }
-          // Insert new member
-          final result = await _memberService.insertMember(
-            name: _nameController.text,
-            address: _addressController.text,
-            email: _emailController.text,
-            phone: _phoneController.text,
-            batch: _selectedBatch,
-            gender: _selectedGender,
-            joining_date: formattedJoiningDate,
-            dob: formattedDob,
-            gymId: id,
-            image: _imageBase64,
-            planId: int.parse(_selectedPlanId), // Pass the selected plan ID
-          );
-
-          if (result['success'] == false) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error: ${result['message']}')),
-            );
           } else {
-            // Handle membership and transaction
-            await _handleMembershipAndTransaction(result['data']);
+            final result = await _memberService.insertMember(
+              name: _nameController.text,
+              address: _addressController.text,
+              email: _emailController.text,
+              phone: _phoneController.text,
+              batch: _selectedBatch,
+              gender: _selectedGender,
+              joining_date: formattedJoiningDate,
+              dob: formattedDob,
+              gymId: id,
+              image: _imageBase64,
+              planId: int.parse(_selectedPlanId), // Pass the selected plan ID
+            );
+
+            if (result['success'] == false) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error: ${result['message']}')),
+              );
+            } else {
+              // Handle membership and transaction
+              await _handleMembershipAndTransaction(result['data']);
+            }
           }
-        } else {
+        }
+        else {
           // Update existing member
           final memberId = widget.member!.id;
           final result = await _memberService.updateMember(
@@ -430,7 +496,7 @@ class _AddMembersState extends State<AddMembers> {
           memberId: insertedMember.id.toString(),
           discountedAmount: _discountAmountController.text,
           membershipPeriod: _selectedPeriod.toString(),
-          days: _daysController.text);
+          days: _daysController.text.isEmpty ? '0' : _daysController.text);
 
       if (membershipResponse['success'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -457,7 +523,7 @@ class _AddMembersState extends State<AddMembers> {
           memberName: insertedMember.name,
           memberPhone: insertedMember.phoneNo,
           tnxId: widget.member?.trxId ?? '0',
-          days: _daysController.text);
+          days: _daysController.text.isEmpty ? '0' : _daysController.text);
 
       if (transactionResponse['success'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -483,7 +549,7 @@ class _AddMembersState extends State<AddMembers> {
           expiredDate: expiredDate,
           discountedAmount: _discountAmountController.text,
           membershipPeriod: _selectedPeriod.toString(),
-          days: _daysController.text);
+          days: _daysController.text.isEmpty ? '0' : _daysController.text);
 
       if (insertResponse['success'] == false) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -521,7 +587,7 @@ class _AddMembersState extends State<AddMembers> {
         planLimit:  _selectedPeriod == 0 ? selectedPlan.planLimit.toString() : "",
         memberName: insertedMember.name,
         memberPhone: insertedMember.phoneNo,
-        days:  _daysController.text
+        days:  _daysController.text.isEmpty ? '0' : _daysController.text
       );
 
       if (transactionResponse['success'] == false) {
@@ -625,7 +691,7 @@ class _AddMembersState extends State<AddMembers> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Colors.black,
+                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                             width: 2.0,
                           ),
                         ),
@@ -634,7 +700,6 @@ class _AddMembersState extends State<AddMembers> {
                               ? Icon(
                                   Icons.add_a_photo,
                                   size: 24.0,
-                                  color: Colors.black,
                                 )
                               : Image.file(
                                   _image!,

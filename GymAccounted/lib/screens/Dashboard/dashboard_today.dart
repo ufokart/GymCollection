@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:gymaccounted/Modal/dahboard_dm.dart';
-
 class DashboardTodayData extends StatelessWidget {
   final DashboardMembershipSummary dashboardMembershipSummary;
-  const DashboardTodayData({super.key, required this.dashboardMembershipSummary});
+  final void Function(List<Map<String, dynamic>> members, String cardType) onCardTap;
+  const DashboardTodayData({
+    Key? key,
+    required this.dashboardMembershipSummary,
+    required this.onCardTap, // Pass the callback here
+  }) : super(key: key);
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
@@ -23,33 +27,41 @@ class DashboardTodayData extends StatelessWidget {
             childAspectRatio: (itemWidth / itemHeight),
             controller: ScrollController(keepScrollOffset: false),
             children: [
-              DashboardCardDetailsVertical(
+          InkWell(
+            onTap:() => onCardTap(dashboardMembershipSummary.todaysNewMembers, 'ADMISSION'),
+            child:  DashboardCardDetailsVertical(
                 topText: 'Admissions',
                 bottomText: 'Today',
                 lineColor: Colors.blue,
-                count: dashboardMembershipSummary.todaysNewMembers,
+                count: dashboardMembershipSummary.todaysNewMembers.length,
                 lineHeight: 50,
                 lineWidth: 5,
                 textSize: 14,
               ),
-              DashboardCardDetailsVertical(
+          ),
+              InkWell(
+              onTap:() =>  onCardTap(dashboardMembershipSummary.renewPayments, 'RENEWED'),
+              child:DashboardCardDetailsVertical(
                 topText: 'Renewed',
                 bottomText: 'Today',
                 lineColor: Colors.green,
-                count: dashboardMembershipSummary.renewPayments,
+                count: dashboardMembershipSummary.renewPayments.length,
                 lineHeight: 50,
                 lineWidth: 5,
                 textSize: 14,
-              ),
+              ),),
+          InkWell(
+          onTap:() => onCardTap(dashboardMembershipSummary.duePayments, 'DUE PAID'),
+              child:
               DashboardCardDetailsVertical(
                 topText: 'Due Paid',
                 bottomText: 'Today',
                 lineColor: Colors.red,
-                count: dashboardMembershipSummary.duePayments,
+                count: dashboardMembershipSummary.duePayments.length,
                 lineHeight: 50,
                 lineWidth: 5,
                 textSize: 14,
-              ),
+              ),),
             ],
           );
         },

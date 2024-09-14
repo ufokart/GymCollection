@@ -3,9 +3,9 @@ import 'package:supabase/supabase.dart';
 import 'package:flutter_json/flutter_json.dart';
 
 class DashboardMembershipSummary {
-  final int todaysNewMembers;
-  final int duePayments;
-  final int renewPayments;
+  final List<Map<String, dynamic>> todaysNewMembers;
+  final List<Map<String, dynamic>> duePayments;
+  final List<Map<String, dynamic>> renewPayments;
 
   DashboardMembershipSummary({
     required this.todaysNewMembers,

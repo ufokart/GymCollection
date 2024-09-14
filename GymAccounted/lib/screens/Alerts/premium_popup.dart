@@ -27,7 +27,6 @@ class PremiumPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
@@ -43,9 +42,8 @@ class PremiumPopup extends StatelessWidget {
             child: Text(
               subscription
                   ? 'Subscription Details'
-                  : 'Unlock Premium Features',
+                  : 'Unlock All Features',
               style: TextStyle(
-                color: Colors.black,
                 fontWeight: FontWeight.bold,
               ),
               overflow: TextOverflow.ellipsis,
@@ -61,27 +59,27 @@ class PremiumPopup extends StatelessWidget {
             if (subscription) ...[
               Text(
                 'You have an active subscription:',
-                style: TextStyle(fontSize: 16, color: Colors.black),
+                style: TextStyle(fontSize: 16),
               ),
               SizedBox(height: 10),
               Text(
                 'Plan Name: ${planName ?? "N/A"}',
-                style: TextStyle(fontSize: 16, color: Colors.black),
+                style: TextStyle(fontSize: 16),
               ),
               SizedBox(height: 10),
               Text(
                 'Purchase Date: ${purchaseDate ?? "N/A"}',
-                style: TextStyle(fontSize: 16, color: Colors.black),
+                style: TextStyle(fontSize: 16),
               ),
               SizedBox(height: 10),
               Text(
                 'Expires on: ${expireDate ?? "N/A"}',
-                style: TextStyle(fontSize: 16, color: Colors.black),
+                style: TextStyle(fontSize: 16),
               ),
             ] else ...[
               Text(
                 'Currently, you have:',
-                style: TextStyle(fontSize: 16, color: Colors.black),
+                style: TextStyle(fontSize: 16),
               ),
               SizedBox(height: 10),
               Row(
@@ -137,7 +135,7 @@ class PremiumPopup extends StatelessWidget {
               Navigator.of(context).pop();
               onBuyNow();
             },
-            child: Text('Buy Now'),
+            child: Text('Buy Now',style: TextStyle(color: Colors.black)),
             style: ElevatedButton.styleFrom(
               padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
               shape: RoundedRectangleBorder(

@@ -133,7 +133,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Subscription',
+          'Subscription'.toUpperCase(),
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
@@ -195,7 +195,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     );
   }
 
-  Widget _buildPlanOption(String title, String price, String actualPrice, Subscription subscription) {
+  /*Widget _buildPlanOption(String title, String price, String actualPrice, Subscription subscription) {
     bool isSelected = _selectedPlan == subscription;
     return GestureDetector(
       onTap: () {
@@ -206,7 +206,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       child: Container(
         margin: EdgeInsets.only(bottom: 16.0),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blueAccent : Colors.white,
+          color: isSelected ? Colors.blueAccent :Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
           borderRadius: BorderRadius.circular(20),
           border: isSelected
               ? Border.all(color: Colors.blueAccent, width: 3)
@@ -260,6 +260,103 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               style: TextStyle(
                 fontSize: 16,
                 color: isSelected ? Colors.white70 : Colors.green,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+*/
+  Widget _buildPlanOption(String title, String price, String actualPrice, Subscription subscription) {
+    bool isSelected = _selectedPlan == subscription;
+
+    // Determine if dark mode is enabled
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedPlan = subscription;
+        });
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 16.0),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.blueAccent
+              : isDarkMode
+              ? Colors.grey[900] // Dark mode background color
+              : Colors.white,    // Light mode background color
+          borderRadius: BorderRadius.circular(20),
+          border: isSelected
+              ? Border.all(color: Colors.blueAccent, width: 3)
+              : Border.all(color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.5),
+              blurRadius: 10,
+              offset: Offset(0, 5),
+            ),
+          ],
+        ),
+        padding: EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isSelected
+                    ? Colors.white
+                    : isDarkMode
+                    ? Colors.white
+                    : Colors.black,
+              ),
+            ),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Text(
+                  price,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected
+                        ? Colors.white
+                        : isDarkMode
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  actualPrice,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected
+                        ? Colors.white70
+                        : isDarkMode
+                        ? Colors.red[200]
+                        : Colors.red,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 5),
+            Text(
+              'You Save: ₹${(double.parse(actualPrice.substring(1)) - double.parse(price.substring(1))).toStringAsFixed(2)}!',
+              style: TextStyle(
+                fontSize: 16,
+                color: isSelected
+                    ? Colors.white70
+                    : isDarkMode
+                    ? Colors.green[300]
+                    : Colors.green,
               ),
             ),
           ],

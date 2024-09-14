@@ -9,8 +9,25 @@ import 'package:firebase_core/firebase_core.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-
+// await Firebase.initializeApp();
+  await Firebase.initializeApp(options: FirebaseOptions(
+      apiKey: "AIzaSyCgZ51OertjAHcRhhr7Y55-eJF1QVUo784",
+      authDomain: "gym-collection.firebaseapp.com",
+      projectId: "gym-collection",
+      storageBucket: "gym-collection.appspot.com",
+      messagingSenderId: "1093148006415",
+      appId: "1:1093148006415:web:49a11e8134daf9a455eb7a",
+      measurementId: "G-NHFRW1JKJD"
+  ),);
+  // const firebaseConfig = {
+  //   apiKey: "AIzaSyCgZ51OertjAHcRhhr7Y55-eJF1QVUo784",
+  //   authDomain: "gym-collection.firebaseapp.com",
+  //   projectId: "gym-collection",
+  //   storageBucket: "gym-collection.appspot.com",
+  //   messagingSenderId: "1093148006415",
+  //   appId: "1:1093148006415:web:49a11e8134daf9a455eb7a",
+  //   measurementId: "G-NHFRW1JKJD"
+  // };
   final themeProvider = ThemeProvider(ThemeData.light());
   await themeProvider.loadTheme();
   await Supabase.initialize(

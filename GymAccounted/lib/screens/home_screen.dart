@@ -16,6 +16,9 @@ import 'package:gymaccounted/screens/Alerts/premium_popup.dart';
 import 'package:gymaccounted/Networking/subscription_api.dart';
 import 'package:gymaccounted/Networking/membership_api.dart';
 import 'package:gymaccounted/Modal/purchased_plans_dm.dart';
+import 'package:gymaccounted/screens/Members/today_members.dart';
+import 'package:gymaccounted/screens/contact_us.dart';
+import 'package:gymaccounted/screens/about_us.dart';
 class HomeScreen extends StatefulWidget {
 
   @override
@@ -58,6 +61,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = 3; // Set the index to the "Members" tab
     });
   }
+  
+  void _onNavigateToTodayMembers(List<Map<String, dynamic>> members, String memberType) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TodayMembers(memberType: memberType, todayMembers:members),
+      ),
+    );
+  }
   // static const List<Widget> _widgetOptions = <Widget>[
   //   Dashboard(onNavigateToMembers: _onNavigateToMembers),
   //   Members(),
@@ -69,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _selectedIndex = index;
       _updateDueMembers();
+      _checkSubscription();
       _fetchSubscription();
     });
   }
@@ -88,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
     gymFuture = _gymService.getGym(); // Fetch initial gym data
     _initializeUser();
     _fetchSubscription();
+    _checkSubscription();
     _updateDueMembers();
     _widgetOptions = _buildWidgetOptions(); // Initialize options with a method
   }
@@ -103,7 +117,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _transactionType = cardType;
       _onNavigateToToday(); // Rebuild the widget list
     });
-    }),
+    },onNavigateToTodayMembers: (data, cardType) {
+        setState(() {
+          _onNavigateToTodayMembers(data, cardType); // Rebuild the widget list
+        });
+      }),
       Members(memberType: _memberType), // This now always gets the updated type
       Plans(),
       TransactionScreen(transactionType: _transactionType),
@@ -137,14 +155,31 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         if (activePlan != null) {
            _subscription = true;
+        } else {
+          _subscription = false;
         }
       });
     } catch (error) {
-    //  ScaffoldMessenger.of(context).showSnackBar(
+      _subscription = false;
+      //  ScaffoldMessenger.of(context).showSnackBar(
        // SnackBar(content: Text('Error fetching plans: $error')),
      // );
     }
   }
+
+  Future<void> _checkSubscription() async {
+    try {
+       await _subscriptionApi.updateExpiredSubscription();
+      setState(() {
+        _fetchSubscription();
+      });
+    } catch (error) {
+      //  ScaffoldMessenger.of(context).showSnackBar(
+      // SnackBar(content: Text('Error fetching plans: $error')),
+      // );
+    }
+  }
+
   Future<void> _updateDueMembers() async {
     try {
        await _membershipService.updateDueMemberships();
@@ -211,7 +246,11 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => SubscriptionPage(),
       ),
-    );
+    ).then((_) {
+      setState(() {
+        _fetchSubscription(); // Refresh the member list
+      });
+    });
   }
   @override
   Widget build(BuildContext context) {
@@ -340,6 +379,31 @@ class _HomeScreenState extends State<HomeScreen> {
                         builder: (context) => SubscriptionPage(),
                       ),
                     ); //// Fetch gym data when going to Plans
+                  },
+                ),
+                Divider(),
+                ListTile(
+                  leading: Icon(Icons.info),
+                  title: Text('About Us'),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AboutUsPage(),
+                      ),
+                    ); // Fetch gym data when going to Plans
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.phone),
+                  title: Text('Contact Us'),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ContactUsPage(),
+                      ),
+                    ); // Fetch gym data when going to Plans
                   },
                 ),
                 Divider(),

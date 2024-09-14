@@ -178,7 +178,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                       children: [
                         Text(transaction.amountType),
                         Text(
-                          DateFormat('yyyy-MM-dd').format(
+                          DateFormat('d-MMMM-yyyy').format(
                               DateTime.parse(transaction.date)),
                           style: TextStyle(
                             color: Colors.grey,

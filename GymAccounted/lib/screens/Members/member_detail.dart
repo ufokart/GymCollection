@@ -10,6 +10,7 @@ import 'package:gymaccounted/Modal/plan_dm.dart';
 import 'package:gymaccounted/Modal/UserModal.dart' as gymUser;
 import 'package:intl/intl.dart';
 import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:gymaccounted/Networking/subscription_api.dart';
 import 'package:gymaccounted/screens/Members/member_renewable.dart';
@@ -115,6 +116,21 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
       );
     }
   }
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: phoneNumber,
+    );
+    try {
+      await launchUrl(launchUri);
+    } catch (e) {
+      print('Could not launch $launchUri');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error making phone call: $e')),
+      );
+    }
+  }
+
   void _showFullImageDialog(File image) {
     showDialog(
       context: context,
@@ -137,7 +153,10 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final member = widget.member; // Use the passed member
-
+    // Format the joining date
+    final DateFormat dateFormat = DateFormat('d-MMMM-yyyy');
+    DateTime joiningDate = DateTime.parse(member.joiningDate);
+    String formattedJoiningDate = dateFormat.format(joiningDate);
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -192,10 +211,13 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                 'Gender', member.gender.isNotEmpty ? member.gender : 'N/A'),
             _buildDetailRow(
                 'Batch', member.batch.isNotEmpty ? member.batch : 'N/A'),
-            _buildDetailRow('Joined Date',
-                member.joiningDate.isNotEmpty ? member.joiningDate : 'N/A'),
+            _buildDetailRow('Joined Date', formattedJoiningDate),
             _buildDetailRow(
-                'Phone No', member.phoneNo.isNotEmpty ? member.phoneNo : 'N/A'),
+              'Phone No',
+              member.phoneNo.isNotEmpty
+                  ?  member.phoneNo
+                  : 'N/A',
+            ),
             _buildDetailRow(
                 'Date of Birth', member.dob.isNotEmpty ? member.dob : 'N/A'),
             SizedBox(height: 16),
@@ -204,11 +226,11 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             Divider(thickness: 2),
             _buildDetailRow(
-                'Plan Name', _planName.isNotEmpty ? _planName : 'N/A'),
-            _buildDetailRow('Plan Limit (In Month)',
-                _planLimit.isNotEmpty ? _planLimit : 'N/A'),
+                'Plan Name', widget.member.membershipPeriod == 0 ? (_planName.isNotEmpty ? _planName : 'Not Assigned') : 'Not Assigned'),
+            _buildDetailRow(widget.member.membershipPeriod == 0 ? 'Plan Limit (In Month)' : 'Plan Limit (In Days)',
+                widget.member.membershipPeriod == 0 ? (_planLimit.isNotEmpty ? _planLimit : 'N/A') : widget.member.days.toString()),
             _buildDetailRow(
-                'Plan Price', _planPrice.isNotEmpty ? '\₹$_planPrice' : 'N/A'),
+                'Plan Price', widget.member.membershipPeriod == 0 ? (_planPrice.isNotEmpty ? '\₹$_planPrice' : 'N/A') : widget.member.discountedAmount.toString()),
             Divider(thickness: 2),
             // Highlight Expire Date
             Text('Plan Expired Date', style: TextStyle(
@@ -228,6 +250,22 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     );
   }
 
+  // Widget _buildDetailRow(String title, String value) {
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(vertical: 4.0),
+  //     child: Row(
+  //       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //       children: [
+  //         Text(title,
+  //             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+  //         Expanded(
+  //           child: Text(value, textAlign: TextAlign.end,
+  //               style: TextStyle(fontSize: 16)),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
   Widget _buildDetailRow(String title, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -237,11 +275,24 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
           Text(title,
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           Expanded(
-            child: Text(value, textAlign: TextAlign.end,
-                style: TextStyle(fontSize: 16)),
+            child: title == 'Phone No' && value.isNotEmpty
+                ? GestureDetector(
+              onTap: () => _makePhoneCall(value),
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            )
+                : Text(value, textAlign: TextAlign.end, style: TextStyle(fontSize: 16)),
           ),
         ],
       ),
     );
   }
+
 }
