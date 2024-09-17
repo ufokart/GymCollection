@@ -1,10 +1,10 @@
 <resources>
-    <string name="default_web_client_id" translatable="false">1093148006415-ntuo19tip20p1d242v1e78vhdltbskce.apps.googleusercontent.com</string>
-    <string name="firebase_database_url" translatable="false">https://gym-collection.firebaseio.com</string>
-    <string name="gcm_defaultSenderId" translatable="false">1093148006415</string>
-    <string name="google_api_key" translatable="false">AIzaSyCVJXuSbZ5I_CBl2uZ_Qnqn5PPl-Fe_l6I</string>
-    <string name="google_app_id" translatable="false">1:1093148006415:android:2785386d1b8295c855eb7a</string>
-    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyCVJXuSbZ5I_CBl2uZ_Qnqn5PPl-Fe_l6I</string>
-    <string name="project_id" translatable="false">gym-collection</string>
-    <string name="google_storage_bucket" translatable="false">gym-collection.appspot.com</string>
+<string name="default_web_client_id" translatable="false">105102371876092058701</string>
+<string name="firebase_database_url" translatable="false">https://gym-collection-ac01d.firebaseio.com</string>
+<string name="gcm_defaultSenderId" translatable="false">93758311709</string>
+<string name="google_api_key" translatable="false">AIzaSyDhiaNkjoS2Oi2g_iWVJXoH6k9kaSnpPJY</string>
+<string name="google_app_id" translatable="false">1:93758311709:android:f52b78df5d7f727eff65f4</string>
+<string name="google_crash_reporting_api_key" translatable="false">AIzaSyDhiaNkjoS2Oi2g_iWVJXoH6k9kaSnpPJY</string>
+<string name="project_id" translatable="false">gym-collection-ac01d</string>
+<string name="google_storage_bucket" translatable="false">gym-collection-ac01d.appspot.com</string>
 </resources>
