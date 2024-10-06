@@ -454,7 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.black, // Color for the selected item icon
+        selectedItemColor: Colors.indigo, // Color for the selected item icon
         unselectedItemColor: Colors.grey, // Color for unselected items
         selectedLabelStyle: TextStyle(color: Colors.black), // Color for selected label
         unselectedLabelStyle: TextStyle(color: Colors.grey),
