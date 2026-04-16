@@ -16,8 +16,17 @@ class Members extends StatefulWidget {
 }
 
 class _MembersState extends State<Members> {
+  final ScrollController _scrollController = ScrollController();
   late MemberService memberService;
-  late Future<List<Member>> members;
+//  late Future<List<Member>> members;
+  List<Member> _members = [];
+  final TextEditingController _searchController = TextEditingController();
+
+  int _page = 0;
+  final int _limit = 20;
+  bool _isLoading = false;
+  bool _hasMore = true;
+
   String _searchQuery = '';
   String _filterStatus = 'all';
   bool _showFilters = true;
@@ -30,10 +39,64 @@ class _MembersState extends State<Members> {
     super.initState();
     _filterStatus = widget.memberType;
     memberService = MemberService(Supabase.instance.client);
-    members = memberService.getMembers();
     _subscriptionApi = SubscriptionApi(Supabase.instance.client);
+
+    _initializeUser().then((_) {
+      _fetchMembers(); // ✅ fetch after user initialized
+    });
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 200 &&
+          !_isLoading &&
+          _hasMore) {
+        _fetchMembers();
+      }
+    });
+
     _fetchSubscription();
-    _initializeUser();
+  }
+  Future<void> _fetchMembers() async {
+    if (_isLoading || !_hasMore) return;
+
+    setState(() => _isLoading = true);
+
+    final newMembers = await memberService.getMembers(
+      page: _page,
+      limit: _limit,
+      search: _searchQuery.isNotEmpty ? _searchQuery : null,
+      status: _filterStatus != 'all' ? _filterStatus : null, // pass only if not "all"
+    );
+    setState(() {
+      if (_page == 0) {
+        _members = newMembers;
+      } else {
+        _members.addAll(newMembers);
+      }
+
+      if (newMembers.length < _limit) {
+        _hasMore = false;
+      } else {
+        _page++; // ✅ increment page only if more records might exist
+      }
+
+      _isLoading = false;
+    });
+  }
+
+
+  List<Member> _applyFilters() {
+    return _members.where((member) {
+      final matchesSearch =
+      member.name.toLowerCase().contains(_searchQuery.toLowerCase());
+
+      final matchesStatus = (_filterStatus == 'all') ||
+          (_filterStatus == 'active' && member.status == 1) ||
+          (_filterStatus == 'due' && member.status == 0) ||
+          (_filterStatus == 'renewed' && member.status == 2);
+
+      return matchesSearch && matchesStatus;
+    }).toList();
   }
 
   Future<void> _initializeUser() async {
@@ -58,25 +121,25 @@ class _MembersState extends State<Members> {
     }
   }
 
-  Future<void> _deleteMember(Member member) async {
-    await memberService.deleteMember(member.id);
-    setState(() {
-      members = memberService.getMembers(); // Refresh the member list
-    });
-  }
+  // Future<void> _deleteMember(Member member) async {
+  //   await memberService.deleteMember(member.id);
+  //   setState(() {
+  //     members = memberService.getMembers(); // Refresh the member list
+  //   });
+  // }
 
   Future<void> _showMemberOptions(Member member) async {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Allows the bottom sheet to take full height if needed
+      isScrollControlled: true, // Full height if needed
       builder: (BuildContext context) {
         return Container(
-          padding: EdgeInsets.only(bottom: 16.0), // Add padding at the bottom
+          padding: const EdgeInsets.only(bottom: 16.0),
           child: Wrap(
             children: [
               ListTile(
-                leading: Icon(Icons.visibility),
-                title: Text('View Member'),
+                leading: const Icon(Icons.visibility),
+                title: const Text('View Member'),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -86,15 +149,17 @@ class _MembersState extends State<Members> {
                     ),
                   ).then((_) {
                     setState(() {
-                      members = memberService.getMembers(); // Refresh the member list
+                      _page = 0;
+                      _members.clear();
+                      _hasMore = true;
+                      _fetchMembers(); // ✅ refresh members
                     });
                   });
-                  // Navigate to view member screen
                 },
               ),
               ListTile(
-                leading: Icon(Icons.edit),
-                title: Text('Edit Member'),
+                leading: const Icon(Icons.edit),
+                title: const Text('Edit Member'),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -104,64 +169,75 @@ class _MembersState extends State<Members> {
                     ),
                   ).then((_) {
                     setState(() {
-                      members = memberService.getMembers(); // Refresh the member list
+                      _page = 0;
+                      _members.clear();
+                      _hasMore = true;
+                      _fetchMembers(); // ✅ refresh members
                     });
                   });
                 },
               ),
               ListTile(
-                leading: Icon(Icons.update),
-                title: Text('Delete Member'),
+                leading: const Icon(Icons.delete),
+                title: const Text('Delete Member'),
                 onTap: () {
                   Navigator.pop(context);
                   _confirmDeleteMember(member.id);
                 },
               ),
-              // Show Renew Membership option only if status is not active (assuming status 0 means inactive)
-              // if (member.status != 1) // Change this condition based on your status logic
-              //   ListTile(
-              //     leading: Icon(Icons.refresh),
-              //     title: Text('Renew Membership'),
-              //     onTap: () {
-              //       Navigator.pop(context);
-              //       // Navigate to renew membership screen
-              //     },
-              //   ),
+              if (member.status != 1) // Example: only show Renew if not active
+                ListTile(
+                  leading: const Icon(Icons.refresh),
+                  title: const Text('Renew Membership'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Add your renew membership navigation here
+                  },
+                ),
             ],
           ),
         );
       },
     );
   }
+
   Future<void> _confirmDeleteMember(int memberId) async {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Confirm Deletion'),
-          content: Text('Are you sure you want to delete this member?'),
+          title: const Text('Confirm Deletion'),
+          content: const Text('Are you sure you want to delete this member?'),
           actions: [
             TextButton(
-              child: Text('Cancel'),
+              child: const Text('Cancel'),
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
               },
             ),
             TextButton(
-              child: Text('Delete'),
+              child: const Text('Delete'),
               onPressed: () async {
                 Navigator.of(context).pop(); // Close the dialog
                 try {
                   await memberService.deleteMember(memberId); // Call your delete method
+
                   setState(() {
-                    members = memberService.getMembers(); // Refresh the member list after deletion
+                    _members.removeWhere((m) => m.id == memberId); // ✅ Remove locally
                   });
-                  // Optionally, show a success message
+
+                  // Optionally reload first page to stay in sync with DB
+                  setState(() {
+                    _page = 0;
+                    _members.clear();
+                    _hasMore = true;
+                    _fetchMembers();
+                  });
+
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Member deleted successfully')),
+                    const SnackBar(content: Text('Member deleted successfully')),
                   );
                 } catch (e) {
-                  // Handle any errors that occur during deletion
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Error deleting member: $e')),
                   );
@@ -174,6 +250,18 @@ class _MembersState extends State<Members> {
     );
   }
 
+  MemoryImage? _decodeBase64(String? base64) {
+    if (base64 == null || base64.isEmpty) return null;
+    try {
+      // if base64 has prefix like "data:image/png;base64,..."
+      final cleaned = base64.contains(",") ? base64.split(",").last : base64;
+      final bytes = base64Decode(cleaned);
+      return MemoryImage(bytes);
+    } catch (e) {
+      debugPrint("⚠️ Base64 decode error: $e");
+      return null;
+    }
+  }
 
   Image imageFromBase64String(String base64String) {
     final bytes = base64Decode(base64String);
@@ -194,19 +282,26 @@ class _MembersState extends State<Members> {
               children: [
                 Expanded(
                   child: TextField(
+                    controller: _searchController, // 👈 add a controller
                     decoration: InputDecoration(
                       hintText: 'Search members...',
-                      prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30.0),
                       ),
                     ),
-                    onChanged: (query) {
-                      setState(() {
-                        _searchQuery = query;
-                      });
-                    },
                   ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.search), // 👈 search button
+                  onPressed: () {
+                    setState(() {
+                      _searchQuery = _searchController.text.trim();
+                      _page = 0;
+                      _hasMore = true;
+                      _members.clear();
+                    });
+                    _fetchMembers();
+                  },
                 ),
                 IconButton(
                   icon: Icon(Icons.filter_list),
@@ -226,151 +321,168 @@ class _MembersState extends State<Members> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   FilterChip(
-                    label: Text('All'),
+                    label: const Text('All'),
                     selected: _filterStatus == 'all',
                     onSelected: (bool selected) {
                       setState(() {
                         _filterStatus = 'all';
+                        _page = 0;
+                        _hasMore = true;
+                        _members.clear();
                       });
+                      _fetchMembers();
                     },
                   ),
                   FilterChip(
-                    label: Text('Active'),
+                    label: const Text('Active'),
                     selected: _filterStatus == 'active',
                     onSelected: (bool selected) {
                       setState(() {
                         _filterStatus = 'active';
+                        _page = 0;
+                        _hasMore = true;
+                        _members.clear();
                       });
+                      _fetchMembers();
                     },
                   ),
                   FilterChip(
-                    label: Text('Due'),
+                    label: const Text('Due'),
                     selected: _filterStatus == 'due',
                     onSelected: (bool selected) {
                       setState(() {
                         _filterStatus = 'due';
+                        _page = 0;
+                        _hasMore = true;
+                        _members.clear();
                       });
+                      _fetchMembers();
                     },
                   ),
                   FilterChip(
-                    label: Text('Renewed'),
+                    label: const Text('Renewed'),
                     selected: _filterStatus == 'renewed',
                     onSelected: (bool selected) {
                       setState(() {
                         _filterStatus = 'renewed';
+                        _page = 0;
+                        _hasMore = true;
+                        _members.clear();
                       });
+                      _fetchMembers();
                     },
                   ),
                 ],
               ),
             ),
           Expanded(
-            child: FutureBuilder<List<Member>>(
-              future: members,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text('No members found'));
+
+            child: Builder(
+              builder: (context) {
+                if (!userInitialized || _isLoading && _members.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
                 }
 
-                var filteredMembers = snapshot.data!
-                    .where((member) =>
-                        member.name
-                            .toLowerCase()
-                            .contains(_searchQuery.toLowerCase()) &&
-                        (_filterStatus == 'all' ||
-                            (_filterStatus == 'active' && member.status == 1) ||
-                            (_filterStatus == 'due' && member.status == 0) ||
-                            (_filterStatus == 'renewed' &&
-                                member.status == 2)))
-                    .toList();
-                if (filteredMembers.isEmpty) {
-                  return Center(child: Text('No members found'));
+                if (_members.isEmpty && !_isLoading) {
+                  return const Center(child: Text("No members found"));
                 }
-                return ListView.separated(
-                  itemCount: filteredMembers.length,
-                  itemBuilder: (context, index) {
-                    final member = filteredMembers[index];
-                    return Container(
-                      child: Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        elevation: 5,
-                        margin:
-                            EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: member.image != null
-                                ? imageFromBase64String(member.image!).image
-                                : null, // Use default if Base64 is null
-                          ),
-                          title: Text(member.name),
-                          subtitle: Text("Expired at: ${member.expiredAt}",
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          trailing: Container(
-                            padding: EdgeInsets.symmetric(
-                                vertical: 2, horizontal: 8),
-                            decoration: BoxDecoration(
-                              color: member.status == 2
-                                  ? Colors.deepPurple
-                                  : member.status == 1
-                                      ? Colors.green
-                                      : Colors.red,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              member.status == 2
-                                  ? "Renewed"
-                                  : member.status == 1
-                                      ? "Active"
-                                      : "Due", // Changed to show member status
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          onTap: () {
-                            _showMemberOptions(member);
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                  separatorBuilder: (context, index) => Divider(),
-                );
+                // final filteredMembers = _applyFilters();
+                //
+                // if (filteredMembers.isEmpty) {
+                //   return const Center(child: Text("No members found"));
+                // }
+
+                return RefreshIndicator(
+                onRefresh: () async {
+    setState(() {
+    _page = 0;
+    _hasMore = true;
+    _members.clear();
+    });
+    await _fetchMembers();
+    },
+    child: ListView.separated(
+    controller: _scrollController,
+    itemCount: _members.length + (_hasMore ? 1 : 0),
+    itemBuilder: (context, index) {
+    if (index == _members.length) {
+    return const Padding(
+    padding: EdgeInsets.all(10),
+    child: Center(child: CircularProgressIndicator()),
+    );
+    }
+    final member = _members[index];
+    return Card(
+    shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(10.0),
+    ),
+    elevation: 5,
+    margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+    child: ListTile(
+    leading: CircleAvatar(
+    backgroundImage: _decodeBase64(member.image),
+    ),
+    title: Text(member.name),
+    subtitle: Text(
+    "Expired at: ${member.expiredAt}",
+    style: const TextStyle(fontWeight: FontWeight.bold),
+    ),
+    trailing: Container(
+    padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+    decoration: BoxDecoration(
+    color: member.status == 2
+    ? Colors.deepPurple
+        : member.status == 1
+    ? Colors.green
+        : Colors.red,
+    borderRadius: BorderRadius.circular(5),
+    ),
+    child: Text(
+    member.status == 2
+    ? "Renewed"
+        : member.status == 1
+    ? "Active"
+        : "Due",
+    style: const TextStyle(color: Colors.white),
+    ),
+    ),
+    onTap: () {
+    _showMemberOptions(member);
+    },
+    ),
+    );
+    },
+    separatorBuilder: (context, index) => const Divider(),
+    ),
+    );
+
+
               },
             ),
           ),
         ],
       ),
-      floatingActionButton: FutureBuilder<List<Member>>(
-        future: members,
-        builder: (context, snapshot) {
-          if (!userInitialized || !snapshot.hasData) {
-            return SizedBox.shrink(); // Return an empty widget if user data or plans are not yet available
-          }
-
-          final membersList = snapshot.data!;
-          return (_subscription == true || user.membersLimit > membersList.length)
-              ? FloatingActionButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => AddMembers()),
-              ).then((_) {
-                setState(() {
-                  members = memberService.getMembers(); // Refresh the member list
-                });
-              });
-            },
-            tooltip: 'Add',
-            child: Icon(Icons.add),
-          )
-              : SizedBox.shrink(); // Return an empty widget if the button should not be displayed
+      floatingActionButton: (!userInitialized || (!_subscription && user.membersLimit <= _members.length))
+          ? const SizedBox.shrink()
+          : FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AddMembers()),
+          ).then((_) {
+            // Reset and reload after adding a member
+            setState(() {
+              _page = 0;
+              _members.clear();
+              _hasMore = true;
+              _fetchMembers();
+            });
+          });
         },
+        tooltip: 'Add',
+        child: const Icon(Icons.add),
       ),
+
     );
   }
 }

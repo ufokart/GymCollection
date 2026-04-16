@@ -10,6 +10,7 @@ import 'package:gymaccounted/screens/home_screen.dart';
 import 'package:gymaccounted/screens/Login/PhoneAuthScreen.dart';
 import 'package:gymaccounted/screens/adduser-screen.dart';
 import 'dart:convert';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -17,7 +18,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
+  GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: <String>[
+      'email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ],
+  );
   gymUser.User? _user; // Use the User class from gymaccounted package
   late GymService _gymService;
   bool _isLoading = false;
@@ -26,8 +32,25 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _gymService = GymService(Supabase.instance.client);
+
+    //_saveUser();
+
     _loadUserData();
   }
+  Future<void> _saveUser() async {
+    gymUser.User data = gymUser.User(
+      id: "tIRQmP2ZVvflRQ5AvFkO2jpLO8g1",
+      name: "",
+      email:  "",
+      membersLimit: 0,
+      plansLimit: 0,
+      razorPayKey: '',
+    );
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user', jsonEncode(data.toJson()));
+  }
+
   Future<void> _loadUserData() async {
     try {
       final gymUser.User? user = await getUser();

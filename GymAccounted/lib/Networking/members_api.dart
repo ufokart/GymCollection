@@ -8,34 +8,151 @@ class MemberService {
   final SupabaseClient supabaseClient;
   MemberService(this.supabaseClient);
 
+  Future<List<Member>> getMembers({
+    int page = 0,
+    int limit = 20,
+    String? search,
+    String? status, // "active", "due", "renewed"
+  }) async {
+    try {
+      final user = await gymUser.User.getUser();
+      final gymId = user?.id ?? "";
 
-  Future<List<Member>> getMembers() async {
-    final user = await gymUser.User.getUser();
-    final gymId = user?.id ?? "";
-    final response = await supabaseClient
-        .from('Members')
-        .select(
-        '*, Memberships(status, renew_plan, expired_date, discounted_amount, TnxId, membership_period, days), Plans(plan_limit), Transaction(amount_type)')
-        .eq('gym_id', gymId)
-        .order('created_at', ascending: false);
-      final data = response as List<dynamic>;
+      if (gymId.isEmpty) {
+        throw Exception("No gymId found for current user");
+      }
+
+      final start = page * limit;
+      final end = start + limit - 1;
+
+      // Start query
+      var query = supabaseClient
+          .from('Members')
+          .select(
+          '''
+      *,
+      Memberships!inner(status, renew_plan, expired_date, discounted_amount, TnxId, membership_period, days),
+      Plans(plan_limit),
+      Transaction(amount_type)
+      '''
+      )
+          .eq('gym_id', gymId);
+
+// 🔍 Apply search if provided
+      if (search != null && search.isNotEmpty) {
+        query = query.or(
+          'name.ilike.%$search%, phone_no.ilike.%$search%',
+        );
+      }
+
+      // ✅ Apply status filter if provided
+      if (status != null) {
+        if (status == 'active') {
+          query = query.eq('Memberships.status', 1);
+        } else if (status == 'due') {
+          query = query.eq('Memberships.status', 0);
+        } else if (status == 'renewed') {
+          query = query.eq('Memberships.status', 2);
+        }
+      }
+
+      // 👉 order + range LAST (after filters)
+      final response = await query
+          .order('created_at', ascending: false)
+          .range(start, end);
+
+      final data = response as List<dynamic>?;
+
+      if (data == null || data.isEmpty) {
+        return [];
+      }
+
       return data.map((json) {
-      final membershipJson = json['Memberships'];
-      final transaction = json['Transaction'];
-      final amountType = transaction[0]['amount_type'];
-      return Member.fromJson({
-        ...json,
-        'status': membershipJson['status'],
-        'renew': membershipJson['renew_plan'],
-        'expiredAt': membershipJson['expired_date'],
-        'discountedAmount': membershipJson['discounted_amount'],
-        'trxId': membershipJson['TnxId'],
-        'days': membershipJson['days'],
-        'membershipPeriod': membershipJson['membership_period'],
-        'amount_type': amountType,
-      });
-    }).toList();
+        final membershipJson = json['Memberships'] ?? {};
+        final transaction = json['Transaction'] ?? [];
+
+        final amountType = transaction.isNotEmpty
+            ? transaction[0]['amount_type']
+            : null;
+
+        return Member.fromJson({
+          ...json,
+          'status': membershipJson['status'],
+          'renew': membershipJson['renew_plan'],
+          'expiredAt': membershipJson['expired_date'],
+          'discountedAmount': membershipJson['discounted_amount'],
+          'trxId': membershipJson['TnxId'],
+          'days': membershipJson['days'],
+          'membershipPeriod': membershipJson['membership_period'],
+          'amount_type': amountType,
+        });
+      }).toList();
+    } catch (e, stackTrace) {
+      debugPrint("❌ Error fetching members: $e");
+      debugPrint("StackTrace: $stackTrace");
+      return [];
+    }
   }
+
+
+  // Future<List<Member>> getMembers({
+  //   int page = 0,
+  //   int limit = 20,
+  //   int status = 0,// how many records per page
+  // }) async {
+  //   try {
+  //     final user = await gymUser.User.getUser();
+  //     final gymId = user?.id ?? "";
+  //
+  //     if (gymId.isEmpty) {
+  //       throw Exception("No gymId found for current user");
+  //     }
+  //
+  //     final start = page * limit;
+  //     final end = start + limit - 1;
+  //
+  //     final response = await supabaseClient
+  //         .from('Members')
+  //         .select(
+  //       '*, Memberships(status, renew_plan, expired_date, discounted_amount, TnxId, membership_period, days), Plans(plan_limit), Transaction(amount_type)',
+  //     )
+  //         .eq('gym_id', gymId)
+  //         .order('created_at', ascending: false)
+  //         .range(start, end); // 👈 pagination here
+  //
+  //     final data = response as List<dynamic>?;
+  //
+  //     if (data == null || data.isEmpty) {
+  //       return [];
+  //     }
+  //
+  //     return data.map((json) {
+  //       final membershipJson = json['Memberships'] ?? {};
+  //       final transaction = json['Transaction'] ?? [];
+  //
+  //       final amountType = transaction.isNotEmpty
+  //           ? transaction[0]['amount_type']
+  //           : null;
+  //
+  //       return Member.fromJson({
+  //         ...json,
+  //         'status': membershipJson['status'],
+  //         'renew': membershipJson['renew_plan'],
+  //         'expiredAt': membershipJson['expired_date'],
+  //         'discountedAmount': membershipJson['discounted_amount'],
+  //         'trxId': membershipJson['TnxId'],
+  //         'days': membershipJson['days'],
+  //         'membershipPeriod': membershipJson['membership_period'],
+  //         'amount_type': amountType,
+  //       });
+  //     }).toList();
+  //   } catch (e, stackTrace) {
+  //     debugPrint("❌ Error fetching members: $e");
+  //     debugPrint("StackTrace: $stackTrace");
+  //     return [];
+  //   }
+  // }
+
 
   Future<Map<String, dynamic>> insertMember(
       {required String name,
